@@ -5,13 +5,14 @@ import { rpc } from "@/lib/sb";
 import { uploadPhotos } from "@/lib/upload";
 import { parseListing } from "@/lib/parse";
 import { errorText, fromLocalInput, money, westernDigits } from "@/lib/util";
-import { ArrowLeft, Calendar, ImageIcon, ImagePlus, Logo, Money, Phone, Shield, User } from "@/components/Icons";
+import { ArrowLeft, Calendar, ImageIcon, ImagePlus, Logo, Money, Shield } from "@/components/Icons";
 import { detectInstall, registerSW, takeShared, type InstallState } from "@/lib/share";
+import { clearSession, getSession, setSession as saveSession, type BrokerSession } from "@/lib/session";
+import BrokerLogin from "./BrokerLogin";
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
 const MAX_PHOTOS = 40;
-const SAVED = "aqarat-broker";
 
 type Pick = { file: File; url: string };
 
@@ -20,25 +21,30 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
   const [pics, setPics] = useState<Pick[]>([]);
   const [price, setPrice] = useState("");
   const [priceTouched, setPriceTouched] = useState(false);
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [session, setSession] = useState<BrokerSession | null>(null);
+  const [checking, setChecking] = useState(true);
+  const [needPin, setNeedPin] = useState(false);
   const [visit, setVisit] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
   const [done, setDone] = useState<string | null>(null);
-  const [myToken, setMyToken] = useState<string | null>(null);
   const [install, setInstall] = useState<InstallState>("other");
   const [installPrompt, setInstallPrompt] = useState<InstallPrompt | null>(null);
   const [note, setNote] = useState("");
 
   useEffect(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem(SAVED) || "{}");
-      if (s.name) setName(s.name);
-      if (s.phone) setPhone(s.phone);
-      if (s.token) setMyToken(s.token);
-    } catch {}
+    // Still logged in on this phone? Check the token is still valid (the owner may have reset the PIN).
+    const saved = getSession();
+    if (!saved) setChecking(false);
+    else rpc<{ broker: { name: string; phone: string; has_pin?: boolean } } | null>("broker_view", { p_token: saved.token })
+      .then((v) => {
+        if (!v) { clearSession(); return; }
+        const s = { ...saved, name: v.broker.name, phone: v.broker.phone };
+        saveSession(s); setSession(s); setNeedPin(v.broker.has_pin === false);
+      })
+      .catch(() => setSession(saved))
+      .finally(() => setChecking(false));
 
     registerSW();
     setInstall(detectInstall());
@@ -99,31 +105,53 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
     const priceNum = parseInt(westernDigits(price).replace(/\D/g, ""), 10);
     if (!raw.trim() && !pics.length) return setError("الصق رسالة العقار أو ارفع صور.");
     if (!priceNum) return setError("اكتب الإيجار الشهري.");
-    if (!name.trim() || !phone.trim()) return setError("اكتب اسمك ورقم موبايلك.");
-    if (westernDigits(phone).replace(/\D/g, "").length < 10) return setError("رقم الموبايل ناقص.");
+    if (!session) return;
 
     setBusy(true);
     setProgress(0);
     try {
-      const paths = await uploadPhotos(pics.map((p) => p.file), setProgress);
+      const { paths, hashes } = await uploadPhotos(pics.map((p) => p.file), setProgress);
 
-      const res = await rpc<{ broker_token: string }>("submit_listing", {
-        p_invite: invite, p_name: name, p_phone: westernDigits(phone), p_raw: raw, p_area: parsed.area,
+      await rpc("broker_submit", {
+        p_token: session.token, p_raw: raw, p_area: parsed.area,
         p_price: priceNum, p_size: parsed.size, p_floors: parsed.floors, p_map: parsed.mapUrl,
-        p_visit: fromLocalInput(visit), p_features: parsed.features, p_photos: paths,
+        p_visit: fromLocalInput(visit), p_features: parsed.features, p_photos: paths, p_hashes: hashes,
       });
-      try { localStorage.setItem(SAVED, JSON.stringify({ name, phone, token: res.broker_token })); } catch {}
-      setMyToken(res.broker_token);
-      setDone(res.broker_token);
+      setDone(session.token);
       pics.forEach((p) => URL.revokeObjectURL(p.url));
       setPics([]); setRaw(""); setVisit(""); setPriceTouched(false);
       window.scrollTo({ top: 0 });
     } catch (err) {
+      if (errorText(err) === errorText(new Error("NOT_ALLOWED"))) { clearSession(); setSession(null); }
       setError(errorText(err));
     } finally {
       setBusy(false);
     }
   }
+
+  function logout() {
+    clearSession();
+    setSession(null);
+    setNeedPin(false);
+  }
+
+  if (checking) {
+    return (
+      <main className="app brand">
+        <Header title="ابعت تفاصيل العقار" sub="لحظة…" />
+      </main>
+    );
+  }
+
+  if (!session) {
+    return (
+      <main className="app brand">
+        <Header title={`ابعت عقاراتك لـ${ownerName}`} sub="ادخل برقم موبايلك والرقم السري" />
+        <BrokerLogin invite={invite} ownerName={ownerName} onIn={(s) => { setSession(s); setError(""); }} />
+      </main>
+    );
+  }
+  const name = session.name;
 
   if (done) {
     return (
@@ -150,11 +178,14 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
     <main className="app brand">
       <Header title="ابعت تفاصيل العقار" sub="املأ البيانات في أقل من دقيقة" />
       <form className="pad" onSubmit={submit} noValidate>
-        {myToken && (
-          <a className="box link" href={`/m/${myToken}`} style={{ textAlign: "center" }}>
-            شوف عقاراتي اللي بعتها وردود {ownerName} ←
-          </a>
-        )}
+        <div className="who">
+          <span>داخل باسم <b>{name}</b> <span className="ltr-inline">{session.phone}</span></span>
+          <button type="button" className="link" onClick={logout}>خروج</button>
+        </div>
+        {needPin && <SetPin token={session.token} onDone={() => setNeedPin(false)} />}
+        <a className="box link" href={`/m/${session.token}`} style={{ textAlign: "center" }}>
+          شوف عقاراتي اللي بعتها وردود {ownerName} ←
+        </a>
 
         {note && <div className={note.startsWith("اتضافت") ? "ok" : "err"} role="status">{note}</div>}
 
@@ -201,20 +232,6 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
         </label>
 
         <label className="field">
-          <span>اسمك <span className="req">*</span></span>
-          <span className="iwrap"><User />
-            <input className="input" id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="اكتب اسمك" />
-          </span>
-        </label>
-
-        <label className="field">
-          <span>رقم الموبايل <span className="req">*</span></span>
-          <span className="iwrap"><Phone />
-            <input className="input ltr" id="phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" placeholder="01xxxxxxxxx" />
-          </span>
-        </label>
-
-        <label className="field">
           <span>ميعاد المعاينة (اختياري)</span>
           <span className="iwrap"><Calendar />
             <input className="input" type="datetime-local" id="visit" value={visit} onChange={(e) => setVisit(e.target.value)} />
@@ -232,9 +249,34 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
           </div>
         )}
         <button className="btn block big" type="submit" disabled={busy}>{busy ? "بنبعت…" : <>إرسال تفاصيل العقار <ArrowLeft /></>}</button>
-        <p className="hint" style={{ textAlign: "center" }}>مش محتاج تسجّل. اسمك ورقمك بيتحفظوا للمرة الجاية.</p>
+        <p className="hint" style={{ textAlign: "center" }}>هتفضل داخل على الموبايل ده لحد ما تدوس «خروج».</p>
       </form>
     </main>
+  );
+}
+
+/** Brokers from before PINs existed: pick a PIN once so nobody else can open their page with their number. */
+function SetPin({ token, onDone }: { token: string; onDone: () => void }) {
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  async function save() {
+    if (pin.length !== 4) return setErr("الرقم السري لازم يكون 4 أرقام.");
+    setBusy(true); setErr("");
+    try { await rpc("broker_change_pin", { p_token: token, p_old: null, p_new: pin }); onDone(); }
+    catch (e) { setErr(errorText(e)); } finally { setBusy(false); }
+  }
+  return (
+    <div className="box" style={{ borderStyle: "solid", borderColor: "var(--accent)" }}>
+      <b>اختار رقم سري لحسابك</b>
+      <span className="hint">4 أرقام هتدخل بيهم مع رقم موبايلك من أي موبايل.</span>
+      <div className="inline-form">
+        <input className="input ltr pin" type="password" inputMode="numeric" maxLength={4} value={pin} id="set-pin"
+          onChange={(e) => setPin(westernDigits(e.target.value).replace(/\D/g, "").slice(0, 4))} placeholder="••••" />
+        <button type="button" className="btn sm" onClick={save} disabled={busy}>حفظ</button>
+      </div>
+      {err && <div className="err">{err}</div>}
+    </div>
   );
 }
 

@@ -69,6 +69,10 @@ export const ERRORS: Record<string, string> = {
   PRICE_REQUIRED: "اكتب الإيجار الشهري.",
   NOT_ALLOWED: "مش مسموح بالعملية دي.",
   OWNER_ONLY: "صاحب البحث بس هو اللي يقدر يعمل كده.",
+  BAD_PHONE: "رقم الموبايل مش مظبوط. اكتبه كده: 01xxxxxxxxx",
+  BAD_PIN: "الرقم السري لازم يكون 4 أرقام.",
+  WRONG_PIN: "الرقم السري غلط.",
+  LOCKED: "الرقم اتقفل مؤقتاً بسبب محاولات غلط كتير. جرّب بعد شوية.",
 };
 
 export function errorText(e: unknown) {

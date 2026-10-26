@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { rpc } from "@/lib/sb";
 import { useLive } from "@/lib/useLive";
-import type { Listing, ViewerData } from "@/lib/types";
+import type { DupReason, Listing, ViewerData } from "@/lib/types";
 import { Gear, Logo } from "@/components/Icons";
 import ListingCard from "./ListingCard";
 import ChatSheet from "./ChatSheet";
@@ -27,6 +27,28 @@ export default function Review({ token, initial }: { token: string; initial: Vie
   const myVote = (l: Listing) => (me === "owner" ? l.owner_vote : l.partner_vote);
   const { hunt, listings } = data;
 
+  // Possible duplicates, per building: the other building and why they look the same.
+  const byId = new Map(listings.map((l) => [l.id, l]));
+  const dupOf = new Map<string, { other: Listing; reasons: DupReason[] }[]>();
+  for (const d of data.duplicates ?? []) {
+    const a = byId.get(d.a), b = byId.get(d.b);
+    if (!a || !b) continue;
+    dupOf.set(a.id, [...(dupOf.get(a.id) ?? []), { other: b, reasons: d.reasons }]);
+    dupOf.set(b.id, [...(dupOf.get(b.id) ?? []), { other: a, reasons: d.reasons }]);
+  }
+  const dupPairs = (data.duplicates ?? []).filter((d) => byId.has(d.a) && byId.has(d.b)).length;
+
+  function jump(id: string) {
+    if (!FILTERS.find((f) => f[0] === filter)![2](byId.get(id)!)) setFilter("all");
+    setTimeout(() => {
+      const el = document.getElementById(`l-${id}`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("flash");
+      setTimeout(() => el.classList.remove("flash"), 1600);
+    }, 50);
+  }
+
   // Remembers how many comments this viewer has read per building, to flag new ones.
   const seenKey = `aqarat-seen-${token}`;
   useEffect(() => { try { setSeen(JSON.parse(localStorage.getItem(seenKey) || "{}")); } catch {} }, [seenKey]);
@@ -41,6 +63,7 @@ export default function Review({ token, initial }: { token: string; initial: Vie
     ["mine", "مستني رأيي", (l) => active(l) && !myVote(l)],
     ["both", "عجبتنا إحنا الاتنين", both],
     ["visit", "معاينات", (l) => active(l) && !!l.suggested_visit],
+    ["dup", "مكرر محتمل", (l) => dupOf.has(l.id)],
     ["no", "مرفوضة", rejected],
   ];
   const shown = listings.filter(FILTERS.find((f) => f[0] === filter)![2]);
@@ -72,13 +95,22 @@ export default function Review({ token, initial }: { token: string; initial: Vie
         {listings.length > 0 && (
           <div className="filters" role="tablist">
             {FILTERS.map(([k, n, fn]) => (
-              <button key={k} className={`fchip ${filter === k ? "on" : ""}`} onClick={() => setFilter(k)} role="tab" aria-selected={filter === k}>
+              (k !== "dup" || dupOf.size > 0) && <button key={k} className={`fchip ${filter === k ? "on" : ""}`} onClick={() => setFilter(k)} role="tab" aria-selected={filter === k}>
                 {n} · {listings.filter(fn).length}
               </button>
             ))}
           </div>
         )}
 
+        {dupPairs > 0 && filter !== "dup" && (
+          <button className="dupbar" onClick={() => setFilter("dup")}>
+            <span>⚠ فيه {dupPairs === 1 ? "مبنى ممكن يكون متكرر" : `${dupPairs} مباني ممكن تكون متكررة`} من سماسرة مختلفين — راجعهم</span>
+            <span style={{ flex: "none" }}>←</span>
+          </button>
+        )}
+        {filter === "dup" && shown.length > 0 && (
+          <p className="hint">دي مباني شكلها نفس المكان (نفس الصور أو اللوكيشن أو الرسالة). لو مش مكررة دوس «مش مكرر» والتنبيه هيختفي. السماسرة مش بيشوفوا التنبيه ده.</p>
+        )}
         {listings.length === 0 && (
           <div className="empty" style={{ paddingBottom: 8 }}>
             <b>لسه مفيش مباني</b>
@@ -108,6 +140,12 @@ export default function Review({ token, initial }: { token: string; initial: Vie
             onDelete={() => act("viewer_delete_listing", { p_listing: l.id })}
             onChat={() => { setChatId(l.id); markSeen(l); }}
             onPhotos={(start) => setPhotos({ list: l.photos, start })}
+            dups={dupOf.get(l.id) ?? []}
+            onJump={jump}
+            onNotDup={(other) => {
+              setData((d) => ({ ...d, duplicates: (d.duplicates ?? []).filter((x) => !((x.a === l.id && x.b === other) || (x.b === l.id && x.a === other))) }));
+              act("viewer_dismiss_duplicate", { p_a: l.id, p_b: other });
+            }}
           />
         ))}
       </div>
@@ -119,7 +157,7 @@ export default function Review({ token, initial }: { token: string; initial: Vie
           onSent={async () => { await reload(); }}
         />
       )}
-      {settings && <SettingsSheet hunt={hunt} token={token} onClose={() => setSettings(false)} onSaved={reload} />}
+      {settings && <SettingsSheet hunt={hunt} token={token} brokers={data.brokers ?? []} onClose={() => setSettings(false)} onSaved={reload} />}
       {photos && <Lightbox list={photos.list} start={photos.start} onClose={() => setPhotos(null)} />}
     </main>
   );

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { photoUrl } from "@/lib/sb";
-import type { Listing, ViewerData, Vote } from "@/lib/types";
+import type { DupReason, Listing, ViewerData, Vote } from "@/lib/types";
 import { fmtDate, fromLocalInput, mapLink, money, telLink, timeAgo, waLink } from "@/lib/util";
 import { Chat, Down, Phone, Pin, Up, Whats } from "@/components/Icons";
 
@@ -18,6 +18,13 @@ type Props = {
   onDelete: () => void;
   onChat: () => void;
   onPhotos: (start: number) => void;
+  dups: { other: Listing; reasons: DupReason[] }[];
+  onJump: (id: string) => void;
+  onNotDup: (otherId: string) => void;
+};
+
+const WHY: Record<DupReason, string> = {
+  photos: "نفس الصور", map: "نفس اللوكيشن", text: "نفس رسالة الواتساب", area: "نفس العنوان والأرقام",
 };
 
 const FIELD_NAMES: Record<string, string> = {
@@ -62,7 +69,7 @@ export default function ListingCard(p: Props) {
   const Mark = () => <span className="edited">اتعدّل</span>;
 
   return (
-    <article className="card">
+    <article className="card" id={`l-${l.id}`}>
       {l.photos.length ? (
         <div className="galwrap">
           <span className="count">{l.photos.length} صورة{ed("photos") && " · الصور اتعدّلت"}</span>
@@ -77,6 +84,25 @@ export default function ListingCard(p: Props) {
       ) : <div className="nophoto">من غير صور</div>}
 
       <div className="cbody">
+        {p.dups.length > 0 && (
+          <div className="dupbox">
+            <b>⚠ ممكن يكون نفس مبنى تاني</b>
+            {p.dups.map(({ other: o, reasons }) => (
+              <div className="duprow" key={o.id}>
+                {o.photos[0] ? <img src={photoUrl(o.photos[0])} alt="" /> : <div className="ph" />}
+                <div className="dmain">
+                  <b>{money(o.price)} ج · {o.area ?? "بدون عنوان"}</b>
+                  <span>من {o.broker.name}{o.broker.phone === l.broker.phone ? " (نفس السمسار)" : ""} · {timeAgo(o.created_at)}</span>
+                  <span className="why">{reasons.map((r) => WHY[r] ?? r).join(" · ")}</span>
+                </div>
+                <div className="dbtns">
+                  <button className="btn sm ghost" onClick={() => p.onJump(o.id)}>اعرضه</button>
+                  <button className="link" style={{ fontSize: 12.5 }} onClick={() => p.onNotDup(o.id)}>مش مكرر</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
         <div>
           <div className="price">{money(l.price)} <small>ج.م / شهر</small>{isNew && <span className="new">جديد</span>}
             {ed("price") && <Mark />}</div>

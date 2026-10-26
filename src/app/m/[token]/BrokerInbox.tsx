@@ -7,6 +7,7 @@ import type { BrokerData, Listing } from "@/lib/types";
 import { errorText, fmtDate, fromLocalInput, money, timeAgo, toLocalInput, waLink } from "@/lib/util";
 import { Logo, Send, Whats } from "@/components/Icons";
 import EditListing from "./EditListing";
+import { clearSession } from "@/lib/session";
 
 function status(l: Listing): [string, string] {
   if (l.visit_confirmed && l.suggested_visit) return ["v", `المعاينة اتأكدت · ${fmtDate(l.suggested_visit)}`];
@@ -30,6 +31,10 @@ export default function BrokerInbox({ token, initial }: { token: string; initial
         </div>
         <a className="btn sm" href={`/b/${data.hunt.invite}`}>+ عقار جديد</a>
       </header>
+      <div className="who" style={{ margin: "10px 16px 0" }}>
+        <span>داخل باسم <b>{data.broker.name}</b> <span className="ltr-inline">{data.broker.phone}</span></span>
+        <button type="button" className="link" onClick={() => { clearSession(); window.location.href = `/b/${data.hunt.invite}`; }}>خروج</button>
+      </div>
       <div className="pad">
         {data.listings.length === 0 && (
           <div className="empty"><b>لسه مبعتش عقارات</b><a className="btn" href={`/b/${data.hunt.invite}`}>ابعت أول عقار</a></div>

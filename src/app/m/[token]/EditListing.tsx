@@ -43,12 +43,12 @@ export default function EditListing({ l, token, checklist, onClose }: Props) {
     if (!raw.trim() && total === 0) return setErr("سيب وصف أو صورة على الأقل.");
     setBusy(true); setProgress(0);
     try {
-      const paths = added.length ? await uploadPhotos(added.map((a) => a.file), setProgress) : [];
+      const { paths, hashes } = added.length ? await uploadPhotos(added.map((a) => a.file), setProgress) : { paths: [], hashes: [] };
       const p = parseListing(raw, checklist);
       await rpc("broker_edit_listing", {
         p_token: token, p_listing: l.id, p_raw: raw, p_area: p.area, p_price: priceNum, p_size: p.size,
         p_floors: p.floors, p_map: p.mapUrl, p_features: p.features,
-        p_remove: l.photos.filter((x) => !keep.includes(x)), p_add: paths,
+        p_remove: l.photos.filter((x) => !keep.includes(x)), p_add: paths, p_hashes: hashes,
       });
       added.forEach((a) => URL.revokeObjectURL(a.url));
       onClose(true);

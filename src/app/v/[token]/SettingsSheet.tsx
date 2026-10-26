@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { rpc } from "@/lib/sb";
-import type { ViewerData } from "@/lib/types";
-import { errorText, waLink } from "@/lib/util";
+import type { BrokerRow, ViewerData } from "@/lib/types";
+import { errorText, timeAgo, waLink } from "@/lib/util";
 import { Whats } from "@/components/Icons";
 
 type Hunt = ViewerData["hunt"];
@@ -34,7 +34,7 @@ export function ShareLinks({ hunt, role }: { hunt: Hunt; role: "owner" | "partne
     <>
       <div className="share">
         <b>لينك السماسرة</b>
-        <span className="hint">ابعته لكل السماسرة. بيرفعوا منه الصور والتفاصيل من غير تسجيل.</span>
+        <span className="hint">ابعته لكل السماسرة. كل سمسار بيدخل برقم موبايله ورقم سري، وبيشوف عقاراته هو بس — إنت وشريكك بتشوفوا الكل.</span>
         <CopyRow url={`${o}/b/${hunt.invite}`} waText={`لو عندك مبنى للإيجار ابعته هنا بالصور في دقيقة:`} />
       </div>
       {role === "owner" && hunt.partner_token && (
@@ -48,7 +48,61 @@ export function ShareLinks({ hunt, role }: { hunt: Hunt; role: "owner" | "partne
   );
 }
 
-export default function SettingsSheet({ hunt, token, onClose, onSaved }: { hunt: Hunt; token: string; onClose: () => void; onSaved: () => Promise<void> }) {
+/** Every broker who logged in. The owner can hand out a new PIN (forgot it / lost phone); it logs out his old sessions. */
+function Brokers({ brokers, token, invite, onChanged }: { brokers: BrokerRow[]; token: string; invite: string; onChanged: () => Promise<void> }) {
+  const [ask, setAsk] = useState<string | null>(null);
+  const [given, setGiven] = useState<{ id: string; pin: string } | null>(null);
+  const [err, setErr] = useState("");
+  async function reset(b: BrokerRow) {
+    setErr("");
+    try {
+      const r = await rpc<{ pin: string }>("owner_reset_broker_pin", { p_token: token, p_broker: b.id });
+      setGiven({ id: b.id, pin: r.pin }); setAsk(null);
+      await onChanged();
+    } catch (e) { setErr(errorText(e)); }
+  }
+  return (
+    <div className="share">
+      <b>السماسرة · {brokers.length}</b>
+      <span className="hint">كل واحد بيدخل برقمه والرقم السري بتاعه. لو حد نسي الرقم السري، اديله رقم جديد من هنا.</span>
+      {brokers.length === 0 && <span className="hint">لسه محدش دخل.</span>}
+      {brokers.map((b) => (
+        <div key={b.id}>
+          <div className="brow">
+            <div className="bm">
+              <b>{b.name}</b>
+              <span><span className="ltr-inline">{b.phone}</span> · {b.listings} عقار · سجّل {timeAgo(b.created_at)}</span>
+              {!b.has_pin && <span style={{ color: "var(--warn)" }}>لسه ماختارش رقم سري</span>}
+              {b.locked && <span style={{ color: "var(--no)" }}>مقفول مؤقتاً (محاولات غلط)</span>}
+            </div>
+            {ask === b.id ? (
+              <div className="row" style={{ display: "flex", gap: 6 }}>
+                <button className="btn sm" onClick={() => reset(b)}>أيوه</button>
+                <button className="btn sm ghost" onClick={() => setAsk(null)}>لأ</button>
+              </div>
+            ) : (
+              <button className="btn sm ghost" onClick={() => { setAsk(b.id); setGiven(null); }}>رقم سري جديد</button>
+            )}
+          </div>
+          {ask === b.id && <span className="hint">هيتعمل له رقم سري جديد ويخرج من أي موبايل كان داخل منه.</span>}
+          {given?.id === b.id && (
+            <div className="box" style={{ marginTop: 6 }}>
+              <span className="hint">الرقم السري الجديد لـ{b.name}:</span>
+              <div className="pinout">{given.pin}</div>
+              <a className="btn sm wa" target="_blank" rel="noreferrer"
+                href={waLink(b.phone, `الرقم السري الجديد بتاعك في عقارات: ${given.pin}\nادخل برقم موبايلك من هنا:\n${origin()}/b/${invite}`)}>
+                <Whats /> ابعتهوله على واتساب
+              </a>
+            </div>
+          )}
+        </div>
+      ))}
+      {err && <div className="err">{err}</div>}
+    </div>
+  );
+}
+
+export default function SettingsSheet({ hunt, token, brokers, onClose, onSaved }: { hunt: Hunt; token: string; brokers: BrokerRow[]; onClose: () => void; onSaved: () => Promise<void> }) {
   const [ownerName, setOwnerName] = useState(hunt.owner_name);
   const [ownerPhone, setOwnerPhone] = useState(hunt.owner_phone ?? "");
   const [partnerName, setPartnerName] = useState(hunt.partner_name);
@@ -80,6 +134,7 @@ export default function SettingsSheet({ hunt, token, onClose, onSaved }: { hunt:
         </header>
         <div className="pad" style={{ overflowY: "auto" }}>
           <ShareLinks hunt={hunt} role="owner" />
+          <Brokers brokers={brokers} token={token} invite={hunt.invite} onChanged={onSaved} />
 
           <div className="share">
             <b>الأسماء والرقم</b>

@@ -42,10 +42,33 @@ export interface ViewerData {
     partner_token: string | null;
   };
   listings: Listing[];
+  /** Pairs of buildings that look like the same place (only shown to owner + partner). */
+  duplicates?: Duplicate[];
+  /** Every broker who logged in — owner only. */
+  brokers?: BrokerRow[] | null;
+}
+
+export type DupReason = "map" | "photos" | "text" | "area";
+
+export interface Duplicate {
+  a: string;
+  b: string;
+  reasons: DupReason[];
+  created_at: string;
+}
+
+export interface BrokerRow {
+  id: string;
+  name: string;
+  phone: string;
+  has_pin: boolean;
+  locked: boolean;
+  listings: number;
+  created_at: string;
 }
 
 export interface BrokerData {
-  broker: { name: string; phone: string };
+  broker: { name: string; phone: string; has_pin?: boolean };
   hunt: { owner_name: string; owner_phone: string | null; invite: string; features: string[] };
   listings: Listing[];
 }
