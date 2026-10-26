@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { sb, rpc } from "@/lib/sb";
-import { compress } from "@/lib/image";
+import { rpc } from "@/lib/sb";
+import { uploadPhotos } from "@/lib/upload";
 import { parseListing } from "@/lib/parse";
 import { errorText, fromLocalInput, money, westernDigits } from "@/lib/util";
 import { ArrowLeft, Calendar, ImageIcon, ImagePlus, Logo, Money, Phone, Shield, User } from "@/components/Icons";
@@ -105,21 +105,7 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
     setBusy(true);
     setProgress(0);
     try {
-      const folder = `u/${crypto.randomUUID()}`;
-      const paths: string[] = new Array(pics.length);
-      let finished = 0, cursor = 0;
-      const worker = async () => {
-        while (cursor < pics.length) {
-          const i = cursor++;
-          const blob = await compress(pics[i].file);
-          const path = `${folder}/${String(i + 1).padStart(2, "0")}.jpg`;
-          const { error } = await sb.storage.from("photos").upload(path, blob, { contentType: "image/jpeg" });
-          if (error) throw new Error(error.message);
-          paths[i] = path;
-          setProgress(Math.round((++finished / pics.length) * 100));
-        }
-      };
-      await Promise.all([worker(), worker(), worker()]);
+      const paths = await uploadPhotos(pics.map((p) => p.file), setProgress);
 
       const res = await rpc<{ broker_token: string }>("submit_listing", {
         p_invite: invite, p_name: name, p_phone: westernDigits(phone), p_raw: raw, p_area: parsed.area,

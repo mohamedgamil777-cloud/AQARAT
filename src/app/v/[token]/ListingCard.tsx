@@ -20,6 +20,10 @@ type Props = {
   onPhotos: (start: number) => void;
 };
 
+const FIELD_NAMES: Record<string, string> = {
+  price: "الإيجار", text: "الوصف", area: "العنوان", size: "المساحة", floors: "الأدوار", photos: "الصور",
+};
+
 function verdict(l: Listing, owner: string, partner: string): [string, string] {
   if (l.owner_vote === "like" && l.partner_vote === "like") return ["both", "عجبتكم إنتم الاتنين · حددوا معاينة"];
   if (l.owner_vote === "nope" && l.partner_vote === "nope") return ["out", "إنتم الاتنين قلتوا لأ"];
@@ -54,11 +58,14 @@ export default function ListingCard(p: Props) {
     );
   };
 
+  const ed = (f: string) => !!l.edited_fields?.includes(f);
+  const Mark = () => <span className="edited">اتعدّل</span>;
+
   return (
     <article className="card">
       {l.photos.length ? (
         <div className="galwrap">
-          <span className="count">{l.photos.length} صورة</span>
+          <span className="count">{l.photos.length} صورة{ed("photos") && " · الصور اتعدّلت"}</span>
           <div className="gal">
             {l.photos.map((ph, i) => (
               <button key={ph} onClick={() => p.onPhotos(i)} aria-label={`افتح الصورة ${i + 1}`}>
@@ -71,12 +78,18 @@ export default function ListingCard(p: Props) {
 
       <div className="cbody">
         <div>
-          <div className="price">{money(l.price)} <small>ج.م / شهر</small>{isNew && <span className="new">جديد</span>}</div>
-          <div>{l.area ?? "بدون عنوان"}</div>
+          <div className="price">{money(l.price)} <small>ج.م / شهر</small>{isNew && <span className="new">جديد</span>}
+            {ed("price") && <Mark />}</div>
+          <div>{l.area ?? "بدون عنوان"}{ed("area") && <Mark />}</div>
+          {l.edited_at && l.edited_fields?.length > 0 && (
+            <div className="sub" title={fmtDate(l.edited_at)}>
+              السمسار عدّل {l.edited_fields.map((f) => FIELD_NAMES[f] ?? f).join("، ")} · {timeAgo(l.edited_at)}
+            </div>
+          )}
         </div>
         <div className="meta">
-          {l.size_m2 != null && <span>{money(l.size_m2)} م²</span>}
-          {l.floors != null && <span>{l.floors} أدوار</span>}
+          {l.size_m2 != null && <span className={ed("size") ? "chg" : ""}>{money(l.size_m2)} م²{ed("size") && " ✎"}</span>}
+          {l.floors != null && <span className={ed("floors") ? "chg" : ""}>{l.floors} أدوار{ed("floors") && " ✎"}</span>}
           <span>السمسار: {l.broker.name}</span>
           <span>{timeAgo(l.created_at)}</span>
         </div>
@@ -134,7 +147,7 @@ export default function ListingCard(p: Props) {
 
         {l.raw_text.trim() && (
           <details className="raw">
-            <summary>رسالة السمسار الأصلية</summary>
+            <summary>رسالة السمسار{ed("text") && <Mark />}</summary>
             <p>{l.raw_text}</p>
           </details>
         )}

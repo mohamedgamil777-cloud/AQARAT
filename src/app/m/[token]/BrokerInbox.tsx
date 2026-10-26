@@ -6,6 +6,7 @@ import { useLive } from "@/lib/useLive";
 import type { BrokerData, Listing } from "@/lib/types";
 import { errorText, fmtDate, fromLocalInput, money, timeAgo, toLocalInput, waLink } from "@/lib/util";
 import { Logo, Send, Whats } from "@/components/Icons";
+import EditListing from "./EditListing";
 
 function status(l: Listing): [string, string] {
   if (l.visit_confirmed && l.suggested_visit) return ["v", `المعاينة اتأكدت · ${fmtDate(l.suggested_visit)}`];
@@ -34,14 +35,17 @@ export default function BrokerInbox({ token, initial }: { token: string; initial
           <div className="empty"><b>لسه مبعتش عقارات</b><a className="btn" href={`/b/${data.hunt.invite}`}>ابعت أول عقار</a></div>
         )}
         {data.listings.map((l) => (
-          <Item key={l.id} l={l} token={token} owner={owner} ownerPhone={data.hunt.owner_phone} reload={reload} />
+          <Item key={l.id} l={l} token={token} owner={owner} ownerPhone={data.hunt.owner_phone} checklist={data.hunt.features ?? []} reload={reload} />
         ))}
       </div>
     </main>
   );
 }
 
-function Item({ l, token, owner, ownerPhone, reload }: { l: Listing; token: string; owner: string; ownerPhone: string | null; reload: () => Promise<void> }) {
+function Item({ l, token, owner, ownerPhone, checklist, reload }: { l: Listing; token: string; owner: string; ownerPhone: string | null; checklist: string[]; reload: () => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
   const [text, setText] = useState("");
   const [visit, setVisit] = useState(toLocalInput(l.suggested_visit));
   const [busy, setBusy] = useState(false);
@@ -70,10 +74,38 @@ function Item({ l, token, owner, ownerPhone, reload }: { l: Listing; token: stri
         {l.photos[0] ? <img src={photoUrl(l.photos[0])} alt="" /> : <div className="ph" />}
         <div>
           <b>{money(l.price)} ج.م / شهر</b>
-          <div className="sub">{l.area ?? "بدون عنوان"} · {l.photos.length} صورة · {timeAgo(l.created_at)}</div>
+          <div className="sub">{l.area ?? "بدون عنوان"} · {l.photos.length} صورة · {timeAgo(l.created_at)}{l.edited_at ? ` · اتعدّل ${timeAgo(l.edited_at)}` : ""}</div>
           <span className={`status ${cls}`}>{label}</span>
         </div>
+        {!editing && <button className="btn sm ghost" onClick={() => { setEditing(true); setEdited(false); }}>تعديل</button>}
       </div>
+
+      {editing && (
+        <>
+          <EditListing l={l} token={token} checklist={checklist}
+            onClose={async (saved) => { setEditing(false); setConfirmDel(false); if (saved) { setEdited(true); await reload(); } }} />
+          {confirmDel ? (
+            <div className="delrow">
+              <span>تمسح العقار ده نهائي؟ {owner} مش هيشوفه تاني.</span>
+              <button className="btn sm danger" disabled={busy}
+                onClick={() => act(() => rpc("broker_delete_listing", { p_token: token, p_listing: l.id }))}>أيوه، امسح</button>
+              <button className="btn sm ghost" onClick={() => setConfirmDel(false)}>لأ</button>
+            </div>
+          ) : (
+            <button className="link delink" onClick={() => setConfirmDel(true)}>مسح العقار كله</button>
+          )}
+        </>
+      )}
+      {edited && !editing && (
+        <>
+          <div className="ok">اتحفظ التعديل ✓ {owner} هيشوفه على طول</div>
+          {ownerPhone && (
+            <a className="btn wa sm" href={waLink(ownerPhone, `عدّلت بيانات العقار: ${title}`)} target="_blank" rel="noreferrer">
+              <Whats /> بلّغ {owner} على واتساب
+            </a>
+          )}
+        </>
+      )}
 
       {l.comments.length > 0 && (
         <div className="bthread">

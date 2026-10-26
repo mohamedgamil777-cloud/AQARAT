@@ -23,6 +23,8 @@ export interface Listing {
   partner_vote: Vote;
   features: string[];
   created_at: string;
+  edited_at: string | null;
+  edited_fields: string[];
   broker: { name: string; phone: string; token?: string | null };
   photos: string[];
   comments: Comment[];
@@ -44,6 +46,6 @@ export interface ViewerData {
 
 export interface BrokerData {
   broker: { name: string; phone: string };
-  hunt: { owner_name: string; owner_phone: string | null; invite: string };
+  hunt: { owner_name: string; owner_phone: string | null; invite: string; features: string[] };
   listings: Listing[];
 }

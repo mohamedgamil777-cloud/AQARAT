@@ -11,7 +11,9 @@ import SettingsSheet, { ShareLinks } from "./SettingsSheet";
 import Lightbox from "./Lightbox";
 
 const both = (l: Listing) => l.owner_vote === "like" && l.partner_vote === "like";
-const rejected = (l: Listing) => !!l.owner_vote && !!l.partner_vote && !both(l);
+// Rejected = both of you said no. It leaves every tab except "مرفوضة"; a split vote stays visible to talk about.
+const rejected = (l: Listing) => l.owner_vote === "nope" && l.partner_vote === "nope";
+const active = (l: Listing) => !rejected(l);
 
 export default function Review({ token, initial }: { token: string; initial: ViewerData }) {
   const [data, reload, setData] = useLive(initial, () => rpc<ViewerData>("viewer_view", { p_token: token }));
@@ -35,10 +37,10 @@ export default function Review({ token, initial }: { token: string; initial: Vie
   }
 
   const FILTERS: [string, string, (l: Listing) => boolean][] = [
-    ["all", "الكل", () => true],
-    ["mine", "مستني رأيي", (l) => !myVote(l)],
+    ["all", "الكل", active],
+    ["mine", "مستني رأيي", (l) => active(l) && !myVote(l)],
     ["both", "عجبتنا إحنا الاتنين", both],
-    ["visit", "معاينات", (l) => !!l.suggested_visit],
+    ["visit", "معاينات", (l) => active(l) && !!l.suggested_visit],
     ["no", "مرفوضة", rejected],
   ];
   const shown = listings.filter(FILTERS.find((f) => f[0] === filter)![2]);
@@ -56,7 +58,7 @@ export default function Review({ token, initial }: { token: string; initial: Vie
       <header className="top">
         <span className="tlogo"><Logo /></span>
         <div className="t">
-          <b>المباني · {listings.length}</b>
+          <b>المباني · {listings.filter(active).length}</b>
           <small>{listings.filter(both).length} عجبتكم إنتم الاتنين · {visits} معاينة متأكدة · إنت: {me === "owner" ? hunt.owner_name : hunt.partner_name}</small>
         </div>
         {me === "owner" && (
@@ -84,7 +86,12 @@ export default function Review({ token, initial }: { token: string; initial: Vie
           </div>
         )}
         {listings.length === 0 && <ShareLinks hunt={hunt} role={me} />}
-        {listings.length > 0 && shown.length === 0 && <div className="empty">مفيش مباني هنا.</div>}
+        {filter === "no" && shown.length > 0 && (
+          <p className="hint">دي المباني اللي إنتم الاتنين قلتوا عليها لأ. لو حد فيكم غيّر رأيه ودوس «عجبني» هترجع للقائمة.</p>
+        )}
+        {listings.length > 0 && shown.length === 0 && (
+          <div className="empty">{filter === "no" ? "مفيش مباني مرفوضة. أي مبنى تقولوا عليه إنتم الاتنين «لأ» هيتنقل هنا." : "مفيش مباني هنا."}</div>
+        )}
 
         {shown.map((l) => (
           <ListingCard

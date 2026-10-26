@@ -66,6 +66,7 @@ export const ERRORS: Record<string, string> = {
   INVITE_NOT_FOUND: "اللينك ده مش شغال. اطلب لينك جديد.",
   NAME_PHONE_REQUIRED: "اكتب اسمك ورقم موبايلك.",
   TOO_MANY_PHOTOS: "أقصى عدد 40 صورة للعقار.",
+  PRICE_REQUIRED: "اكتب الإيجار الشهري.",
   NOT_ALLOWED: "مش مسموح بالعملية دي.",
   OWNER_ONLY: "صاحب البحث بس هو اللي يقدر يعمل كده.",
 };
