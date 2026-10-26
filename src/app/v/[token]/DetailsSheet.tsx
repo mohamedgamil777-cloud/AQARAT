@@ -54,6 +54,7 @@ export default function DetailsSheet(p: Props) {
   const waitingFor = d === "waiting_me" ? "مستني رأيك" : d === "waiting_partner" ? `مستنيين رأي ${me === "owner" ? hunt.partner_name : hunt.owner_name}` : null;
   const [vcls, vtext] = VERDICT[d] ?? ["wait", waitingFor ?? ""];
   const other = me === "owner" ? hunt.partner_name : hunt.owner_name;
+  const toOther = other.startsWith("ال") ? `لل${other.slice(2)}` : `لـ${other}`; // "للشريك", "لـمحمد"
   const names = { owner: hunt.owner_name, partner: hunt.partner_name, broker: `السمسار ${l.broker.name}` };
 
   useEffect(() => {
@@ -160,8 +161,8 @@ export default function DetailsSheet(p: Props) {
           <section className="dsec" id="notes">
             <h3>بينك وبين {other} <span className="tag-private">🔒 خاص — السمسار مش بيشوفه</span></h3>
             <Thread list={l.comments.filter((c) => c.private)} me={me} names={names}
-              empty={`مفيش ملاحظات لسه. اكتب لـ${other} رأيك أو سؤالك عن العقار ده.`}
-              placeholder={`اكتب ملاحظة لـ${other}…`} onSend={(b) => p.onComment(b, true)} />
+              empty={`مفيش ملاحظات لسه. اكتب ${toOther} رأيك أو سؤالك عن العقار ده.`}
+              placeholder={`اكتب ملاحظة ${toOther}…`} onSend={(b) => p.onComment(b, true)} />
           </section>
 
           <section className="dsec">
