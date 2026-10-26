@@ -47,7 +47,7 @@ export function duplicateIndex(listings: Listing[], dups: Duplicate[] | undefine
   return { links, candidates, byId };
 }
 
-export type FilterKey = "active" | "mine" | "partner" | "approved" | "split" | "visits" | "dup" | "rejected";
+export type FilterKey = "active" | "mine" | "partner" | "approved" | "split" | "visits" | "comments" | "dup" | "rejected";
 
 export interface FilterDef { key: FilterKey; label: string; test: (l: Listing) => boolean; tone?: "warn" | "no"; hideWhenEmpty?: boolean }
 
@@ -62,6 +62,7 @@ export function buildFilters(me: Role, partnerName: string, candidates: Set<stri
     { key: "approved", label: "موافقين إحنا الاتنين", test: (l) => active(l) && decision(l, me) === "approved" },
     { key: "split", label: "محتاج اتفاق", test: (l) => active(l) && decision(l, me) === "split", hideWhenEmpty: true },
     { key: "visits", label: "معاينات", test: (l) => active(l) && (isScheduled(l) || needsScheduling(l, me)) },
+    { key: "comments", label: "فيها تعليقات", test: (l) => l.comments.length > 0 },
     { key: "dup", label: "مكرر محتمل", test: dup, tone: "warn" },
     { key: "rejected", label: "مرفوضة", test: rejected, tone: "no" },
   ];

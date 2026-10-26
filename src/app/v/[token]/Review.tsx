@@ -18,6 +18,7 @@ const EMPTY: Record<FilterKey, string> = {
   partner: "مفيش حاجة مستنية رأي شريكك.",
   approved: "لسه مفيش عقار وافقتوا عليه إنتم الاتنين.",
   split: "مفيش عقارات رأيكم فيها مختلف.",
+  comments: "مفيش عقارات عليها تعليقات لسه. أي ملاحظة بينك وبين شريكك أو رسالة مع السمسار هتظهر العقار هنا.",
   visits: "مفيش معاينات. أي عقار توافقوا عليه إنتم الاتنين هيظهر هنا عشان تحددوا ميعاد.",
   dup: "مفيش عقارات مكررة.",
   rejected: "مفيش عقارات مرفوضة. أي عقار تقولوا عليه إنتم الاتنين «لأ» هيتنقل هنا.",
@@ -41,7 +42,13 @@ export default function Review({ token, initial }: { token: string; initial: Vie
   const { links, candidates, byId } = useMemo(() => duplicateIndex(listings, data.duplicates), [listings, data.duplicates]);
   const filters = useMemo(() => buildFilters(me, otherName, candidates), [me, otherName, candidates]);
   const current = filters.find((f) => f.key === filter) ?? filters[0];
-  const shown = useMemo(() => sortListings(listings.filter(current.test), sort, me), [listings, current, sort, me]);
+  const shown = useMemo(() => {
+    const list = sortListings(listings.filter(current.test), sort, me);
+    // In the comments tab, "newest" means the building discussed most recently.
+    if (current.key !== "comments" || sort !== "new") return list;
+    const lastAt = (l: Listing) => Math.max(0, ...l.comments.map((c) => +new Date(c.created_at)));
+    return [...list].sort((a, b) => lastAt(b) - lastAt(a));
+  }, [listings, current, sort, me]);
 
   // Per-viewer conveniences: remembered sort + how many comments were read per building.
   const seenKey = `aqarat-seen-${token}`;
