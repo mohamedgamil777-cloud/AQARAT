@@ -5,7 +5,7 @@ import { photoUrl, rpc } from "@/lib/sb";
 import { useLive } from "@/lib/useLive";
 import type { BrokerData, Listing } from "@/lib/types";
 import { errorText, fmtDate, fromLocalInput, money, timeAgo, toLocalInput, waLink } from "@/lib/util";
-import { Send, Whats } from "@/components/Icons";
+import { Logo, Send, Whats } from "@/components/Icons";
 
 function status(l: Listing): [string, string] {
   if (l.visit_confirmed && l.suggested_visit) return ["v", `المعاينة اتأكدت · ${fmtDate(l.suggested_visit)}`];
@@ -20,9 +20,9 @@ export default function BrokerInbox({ token, initial }: { token: string; initial
   const owner = data.hunt.owner_name;
 
   return (
-    <main className="app">
+    <main className="app brand soft">
       <header className="top">
-        <div className="dot">ع</div>
+        <span className="tlogo"><Logo /></span>
         <div className="t">
           <b>عقاراتي مع {owner}</b>
           <small>{data.listings.length} عقار · {data.broker.name}</small>

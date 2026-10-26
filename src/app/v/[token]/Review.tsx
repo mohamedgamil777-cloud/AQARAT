@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { rpc } from "@/lib/sb";
 import { useLive } from "@/lib/useLive";
 import type { Listing, ViewerData } from "@/lib/types";
-import { Gear } from "@/components/Icons";
+import { Gear, Logo } from "@/components/Icons";
 import ListingCard from "./ListingCard";
 import ChatSheet from "./ChatSheet";
 import SettingsSheet, { ShareLinks } from "./SettingsSheet";
@@ -52,9 +52,9 @@ export default function Review({ token, initial }: { token: string; initial: Vie
   }
 
   return (
-    <main className="app">
+    <main className="app brand soft">
       <header className="top">
-        <div className="dot">{(me === "owner" ? hunt.owner_name : hunt.partner_name).slice(0, 1)}</div>
+        <span className="tlogo"><Logo /></span>
         <div className="t">
           <b>المباني · {listings.length}</b>
           <small>{listings.filter(both).length} عجبتكم إنتم الاتنين · {visits} معاينة متأكدة · إنت: {me === "owner" ? hunt.owner_name : hunt.partner_name}</small>

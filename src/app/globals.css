@@ -253,6 +253,28 @@ details.raw p { white-space: pre-wrap; font-size: 13.5px; background: var(--sunk
 .brand .btn.big svg { width: 22px; height: 22px; }
 .brand .box { background: var(--surface); border-color: var(--line); }
 
+/* List pages (owner, partner, broker replies): same palette, faint green-grey page with white cards. */
+.brand.soft { --bg: #f4f7f5; --surface: #ffffff; }
+@media (prefers-color-scheme: dark) { .brand.soft { --bg: #101512; --surface: #18201b; } }
+body:has(.brand.soft) { background: #f4f7f5; }
+body:has(.brand:not(.soft)) { background: #ffffff; }
+@media (prefers-color-scheme: dark) { body:has(.brand) { background: #101512; } }
+.brand .top { background: var(--surface); border-bottom-color: var(--line); }
+.tlogo { display: grid; place-items: center; flex: none; }
+.tlogo svg { width: 34px; height: 34px; }
+.brand .top b { font-size: 17px; }
+.brand .card, .brand .bitem { border-color: var(--line); border-radius: 18px; box-shadow: 0 8px 24px -18px rgb(14 80 50 / 0.35); }
+.brand .fchip { background: var(--surface); }
+.brand .fchip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.brand .act { border-radius: 14px; }
+.brand .act.call { color: var(--accent); }
+.brand .vote, .brand .visit { border-radius: 14px; }
+.brand .share { border-radius: 18px; }
+.brand .sheet { background: var(--bg); }
+.brand .composer { background: var(--surface); }
+.brand .msg.mine { background: var(--accent-soft); }
+.brand .x { background: var(--sunk); }
+
 @media (prefers-reduced-motion: no-preference) {
   .vb, .chip, .fchip, .btn { transition: background 0.15s, border-color 0.15s, color 0.15s; }
 }
