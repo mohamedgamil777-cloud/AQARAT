@@ -53,3 +53,22 @@ begin
    where owner_token = p_token;
   if not found then raise exception 'OWNER_ONLY'; end if;
 end $$;
+
+-- Location (e.g. المعادي) added to the brief.
+alter table hunts alter column brief set default
+  '{"location":"المعادي","size_min":500,"size_max":1000,"price_min":90000,"price_max":150000,"ground":true}'::jsonb;
+update hunts set brief = brief || '{"location":"المعادي"}'::jsonb where not brief ? 'location';
+
+create or replace function owner_set_brief(p_token text, p_location text, p_size_min int, p_size_max int, p_price_min int, p_price_max int, p_ground boolean)
+returns void language plpgsql security definer set search_path = public as $$
+begin
+  if (p_size_min is not null and p_size_max is not null and p_size_min > p_size_max)
+     or (p_price_min is not null and p_price_max is not null and p_price_min > p_price_max) then
+    raise exception 'BAD_RANGE';
+  end if;
+  update hunts set brief = jsonb_build_object('location', nullif(trim(p_location), ''),
+      'size_min', p_size_min, 'size_max', p_size_max,
+      'price_min', p_price_min, 'price_max', p_price_max, 'ground', coalesce(p_ground, false))
+   where owner_token = p_token;
+  if not found then raise exception 'OWNER_ONLY'; end if;
+end $$;

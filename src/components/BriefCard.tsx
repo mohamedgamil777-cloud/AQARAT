@@ -8,6 +8,7 @@ export default function BriefCard({ brief, features, ownerName, compact = false 
   const price = brief ? rangeText(brief.price_min, brief.price_max, "ج.م في الشهر") : null;
   const rows = (
     <>
+      {brief?.location && <div className="brow2"><span>المكان</span><b>{brief.location}</b></div>}
       {size && <div className="brow2"><span>المساحة</span><b>{size}</b></div>}
       {price && <div className="brow2"><span>الإيجار الشهري</span><b>{price}</b></div>}
       {brief?.ground && <div className="brow2"><span>الدور</span><b>يفضّل دور أرضي</b></div>}

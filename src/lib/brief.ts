@@ -2,6 +2,7 @@ import { money } from "./util";
 
 /** What the owner is looking for. A null bound means "no limit on that side". */
 export interface Brief {
+  location?: string | null;
   size_min: number | null;
   size_max: number | null;
   price_min: number | null;
@@ -9,7 +10,7 @@ export interface Brief {
   ground: boolean;
 }
 
-export const DEFAULT_BRIEF: Brief = { size_min: 500, size_max: 1000, price_min: 90000, price_max: 150000, ground: true };
+export const DEFAULT_BRIEF: Brief = { location: "المعادي", size_min: 500, size_max: 1000, price_min: 90000, price_max: 150000, ground: true };
 
 export function rangeText(min: number | null, max: number | null, unit: string) {
   if (min != null && max != null) return `من ${money(min)} لـ ${money(max)} ${unit}`;

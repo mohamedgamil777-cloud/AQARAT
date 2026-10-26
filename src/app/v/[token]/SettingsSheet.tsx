@@ -111,6 +111,7 @@ export default function SettingsSheet({ hunt, token, brokers, onClose, onSaved }
   const [newFeat, setNewFeat] = useState("");
   const b0 = hunt.brief ?? DEFAULT_BRIEF;
   const fmt = (n: number | null) => (n == null ? "" : money(n));
+  const [location, setLocation] = useState(b0.location ?? "");
   const [sizeMin, setSizeMin] = useState(fmt(b0.size_min));
   const [sizeMax, setSizeMax] = useState(fmt(b0.size_max));
   const [priceMin, setPriceMin] = useState(fmt(b0.price_min));
@@ -129,7 +130,7 @@ export default function SettingsSheet({ hunt, token, brokers, onClose, onSaved }
     setBusy(true); setMsg("");
     try {
       await rpc("owner_settings", { p_token: token, p_owner_name: ownerName, p_owner_phone: ownerPhone, p_partner_name: partnerName, p_features: features });
-      await rpc("owner_set_brief", { p_token: token, p_size_min: num(sizeMin), p_size_max: num(sizeMax), p_price_min: num(priceMin), p_price_max: num(priceMax), p_ground: ground });
+      await rpc("owner_set_brief", { p_token: token, p_location: location, p_size_min: num(sizeMin), p_size_max: num(sizeMax), p_price_min: num(priceMin), p_price_max: num(priceMax), p_ground: ground });
       await onSaved();
       setMsg("اتحفظ ✓");
     } catch (e) { setMsg(errorText(e)); } finally { setBusy(false); }
@@ -162,6 +163,7 @@ export default function SettingsSheet({ hunt, token, brokers, onClose, onSaved }
           <div className="share">
             <b>المطلوب (بيظهر للسماسرة)</b>
             <span className="hint">السمسار بيشوف ده فوق الفورم، وبيطلعله تنبيه لو العقار برّه الحدود. سيب الخانة فاضية لو مفيش حد.</span>
+            <label className="field">المكان<input className="input" id="b-loc" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="مثلاً: المعادي" /></label>
             <div className="row2">
               <label className="field">المساحة من (م²)<input className="input" id="b-smin" inputMode="numeric" value={sizeMin} onChange={(e) => setSizeMin(e.target.value)} /></label>
               <label className="field">لحد (م²)<input className="input" id="b-smax" inputMode="numeric" value={sizeMax} onChange={(e) => setSizeMax(e.target.value)} /></label>
