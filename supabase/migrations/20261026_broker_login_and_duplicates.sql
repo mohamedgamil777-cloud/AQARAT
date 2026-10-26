@@ -136,7 +136,8 @@ begin
     end if;
 
     -- Similar address plus at least one matching number.
-    if length(coalesce(l.area, '')) >= 4 and length(coalesce(o.area, '')) >= 4
+    -- a real address (not just "Maadi"), clearly similar, AND matching size or rent
+    if length(trim(coalesce(l.area, ''))) >= 12 and length(trim(coalesce(o.area, ''))) >= 12
        and similarity(l.area, o.area) >= 0.6
        and (_near(l.size_m2, o.size_m2, 0.05) or _near(l.price, o.price, 0.05)) then
       r := array_append(r, 'area');
