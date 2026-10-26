@@ -5,6 +5,7 @@ import { sb, rpc } from "@/lib/sb";
 import { compress } from "@/lib/image";
 import { parseListing } from "@/lib/parse";
 import { errorText, fromLocalInput, money, westernDigits } from "@/lib/util";
+import { ArrowLeft, Calendar, ImageIcon, ImagePlus, Logo, Money, Phone, Shield, User } from "@/components/Icons";
 import { detectInstall, registerSW, takeShared, type InstallState } from "@/lib/share";
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
@@ -140,8 +141,8 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
 
   if (done) {
     return (
-      <main className="app">
-        <Header ownerName={ownerName} />
+      <main className="app brand">
+        <Header title="وصل العقار ✓" sub={`شكراً يا ${name}، ${ownerName} هيشوفه دلوقتي`} />
         <div className="pad">
           <div className="ok">وصل لـ{ownerName} ✓ شكراً يا {name}</div>
           <p className="hint" style={{ textAlign: "center" }}>هتلاقي ردّه ورأيه في صفحة «عقاراتي».</p>
@@ -160,8 +161,8 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
   ].filter(Boolean) as string[];
 
   return (
-    <main className="app">
-      <Header ownerName={ownerName} />
+    <main className="app brand">
+      <Header title="ابعت تفاصيل العقار" sub="املأ البيانات في أقل من دقيقة" />
       <form className="pad" onSubmit={submit} noValidate>
         {myToken && (
           <a className="box link" href={`/m/${myToken}`} style={{ textAlign: "center" }}>
@@ -169,27 +170,31 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
           </a>
         )}
 
-        <ShareHelp state={install} canPrompt={!!installPrompt} onInstall={doInstall} />
         {note && <div className={note.startsWith("اتضافت") ? "ok" : "err"} role="status">{note}</div>}
 
         <label className="field">
-          الصق رسالة العقار هنا
-          <em>زي ما بتبعتها على واتساب بالظبط</em>
+          رسالة العقار
           <textarea className="input" id="raw" value={raw} onChange={(e) => setRaw(e.target.value)}
-            placeholder={"مثال:\nللإيجار مبنى إداري بمدينة نصر\n4 أدوار، كل دور 180م\nأسانسير + جراج\n85 ألف شهري"} />
+            placeholder="الصق رسالة العقار من واتساب زي ما هي…" />
+          <em>مش لازم ترتب الكلام</em>
         </label>
         {chips.length > 0 && (
           <div className="parsed">قرينا من رسالتك: {chips.map((c) => <span key={c}>{c}</span>)}</div>
         )}
 
-        <label className="drop">
+        <label className="photobox">
           <input type="file" accept="image/*" multiple id="photos" onChange={(e) => { addFiles(e.target.files); e.target.value = ""; }} />
-          <b>{pics.length ? `ضيف صور تانية (${pics.length}/${MAX_PHOTOS})` : "اضغط وارفع الصور"}</b>
-          <span>اختار كل الصور مرة واحدة · حتى {MAX_PHOTOS} صورة</span>
+          <span className="pb-icon"><ImagePlus /></span>
+          <span className="pb-text">
+            <b>{pics.length ? `صور العقار (${pics.length}/${MAX_PHOTOS})` : "صور العقار"}</b>
+            <span>اختار الصور مرة واحدة — لحد {MAX_PHOTOS} صورة</span>
+          </span>
+          <span className="pb-btn"><ImageIcon />{pics.length ? "ضيف صور" : "اختار الصور"}</span>
         </label>
         {pics.length === 0 && (
           <p className="hint">صور الواتساب بتكون موجودة في الجاليري في ألبوم <b>WhatsApp Images</b>، اختارها من هناك على طول.</p>
         )}
+        {pics.length === 0 && <ShareHelp state={install} canPrompt={!!installPrompt} onInstall={doInstall} />}
         {pics.length > 0 && (
           <div className="thumbs">
             {pics.map((p, i) => (
@@ -203,28 +208,35 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
 
         <label className="field">
           <span>الإيجار الشهري (جنيه) <span className="req">*</span></span>
-          <input className="input" id="price" inputMode="numeric" value={price}
-            onChange={(e) => { setPriceTouched(true); setPrice(e.target.value); }} placeholder="85,000" />
+          <span className="iwrap"><Money />
+            <input className="input" id="price" inputMode="numeric" value={price}
+              onChange={(e) => { setPriceTouched(true); setPrice(e.target.value); }} placeholder="85,000" />
+          </span>
         </label>
 
-        <div className="row2">
-          <label className="field">
-            <span>اسمك <span className="req">*</span></span>
-            <input className="input" id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
-          </label>
-          <label className="field">
-            <span>رقم الموبايل <span className="req">*</span></span>
-            <input className="input ltr" id="phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" placeholder="01xxxxxxxxx" />
-          </label>
-        </div>
+        <label className="field">
+          <span>اسمك <span className="req">*</span></span>
+          <span className="iwrap"><User />
+            <input className="input" id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" placeholder="اكتب اسمك" />
+          </span>
+        </label>
 
-        <div className="box">
-          <label className="field">
-            <span>ميعاد معاينة مقترح <em>(اختياري)</em></span>
+        <label className="field">
+          <span>رقم الموبايل <span className="req">*</span></span>
+          <span className="iwrap"><Phone />
+            <input className="input ltr" id="phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" placeholder="01xxxxxxxxx" />
+          </span>
+        </label>
+
+        <label className="field">
+          <span>ميعاد المعاينة (اختياري)</span>
+          <span className="iwrap"><Calendar />
             <input className="input" type="datetime-local" id="visit" value={visit} onChange={(e) => setVisit(e.target.value)} />
-          </label>
-          <span className="hint">ممكن تسيبه فاضي وتحدده بعد ما {ownerName} يوافق.</span>
-        </div>
+          </span>
+          <em>ممكن تسيبه فاضي وتحدده بعد ما {ownerName} يوافق</em>
+        </label>
+
+        <div className="privacy"><Shield /><span>بياناتك للتواصل بخصوص العقار فقط</span></div>
 
         {error && <div className="err" role="alert">{error}</div>}
         {busy && pics.length > 0 && (
@@ -233,7 +245,7 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
             <p className="hint" style={{ marginTop: 4 }}>بنرفع الصور… {progress}%</p>
           </div>
         )}
-        <button className="btn block" type="submit" disabled={busy}>{busy ? "بنبعت…" : "إرسال"}</button>
+        <button className="btn block big" type="submit" disabled={busy}>{busy ? "بنبعت…" : <>إرسال تفاصيل العقار <ArrowLeft /></>}</button>
         <p className="hint" style={{ textAlign: "center" }}>مش محتاج تسجّل. اسمك ورقمك بيتحفظوا للمرة الجاية.</p>
       </form>
     </main>
@@ -271,14 +283,12 @@ function ShareHelp({ state, canPrompt, onInstall }: { state: InstallState; canPr
   );
 }
 
-function Header({ ownerName }: { ownerName: string }) {
+function Header({ title, sub }: { title: string; sub: string }) {
   return (
-    <header className="top">
-      <div className="dot">ع</div>
-      <div className="t">
-        <b>ابعت العقار لـ{ownerName}</b>
-        <small>الصق رسالتك وارفع الصور · دقيقة واحدة</small>
-      </div>
+    <header className="bhero">
+      <div className="logo"><Logo /><span>عقارات</span></div>
+      <h1>{title}</h1>
+      <p>{sub}</p>
     </header>
   );
 }

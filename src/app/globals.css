@@ -197,6 +197,62 @@ details.raw p { white-space: pre-wrap; font-size: 13.5px; background: var(--sunk
 .featrow { display: flex; gap: 6px; align-items: center; }
 .featrow .input { flex: 1; }
 
+/* ---------- Broker page look (white, clean green, icon fields) ---------- */
+.brand {
+  --bg: #ffffff; --surface: #f8faf9; --sunk: #eef2f0; --ink: #1a2233; --muted: #6b7280; --line: #e2e7e4;
+  --accent: #0e7c4a; --accent-ink: #ffffff; --accent-soft: #e9f5ee; --hero: #eef7f1;
+  background: var(--bg); color: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  .brand {
+    --bg: #101512; --surface: #18201b; --sunk: #222b25; --ink: #e8ede9; --muted: #9aa5a0; --line: #2c3630;
+    --accent: #3ec486; --accent-ink: #06150d; --accent-soft: #163024; --hero: #14231b;
+  }
+}
+.brand .bhero {
+  text-align: center; padding: 18px max(20px, env(safe-area-inset-right)) 34px max(20px, env(safe-area-inset-left));
+  background: radial-gradient(130% 100% at 50% 0%, var(--hero) 0 62%, transparent 63%);
+  display: flex; flex-direction: column; gap: 6px; align-items: center;
+}
+.brand .logo { align-self: flex-start; display: flex; align-items: center; gap: 8px; font-size: 26px; font-weight: 700; color: var(--ink); margin-bottom: 14px; }
+.brand .logo svg { width: 38px; height: 38px; }
+.brand .bhero h1 { font-size: 27px; font-weight: 700; }
+.brand .bhero p { color: var(--muted); font-size: 15px; }
+.brand .pad { gap: 18px; padding-top: 4px; }
+.brand .field { font-size: 15.5px; font-weight: 700; gap: 8px; }
+.brand .field em { font-size: 13px; }
+.brand .input { background: var(--surface); border-color: var(--line); border-radius: 14px; padding: 15px 16px; }
+.brand .input { font-weight: 400; }
+.brand .input::placeholder { color: #9aa1ab; font-weight: 400; }
+.iwrap input[type="datetime-local"] { position: relative; text-align: right; }
+.iwrap input[type="datetime-local"]::-webkit-calendar-picker-indicator { position: absolute; inset: 0; width: auto; height: auto; opacity: 0; cursor: pointer; }
+.brand textarea.input { min-height: 110px; }
+.brand .input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.iwrap { position: relative; display: block; }
+.iwrap > svg { position: absolute; inset-inline-start: 16px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; color: var(--muted); pointer-events: none; z-index: 1; }
+.iwrap .input { padding-inline-start: 50px; }
+.iwrap .input.ltr { text-align: left; }
+
+.photobox {
+  position: relative; display: flex; align-items: center; gap: 14px; cursor: pointer;
+  border: 1.5px dashed #cfd8d3; border-radius: 16px; padding: 16px; background: color-mix(in srgb, var(--accent-soft) 45%, transparent);
+}
+.photobox input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; }
+.pb-icon { width: 58px; height: 58px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; flex: none; }
+.pb-icon svg { width: 30px; height: 30px; }
+.pb-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pb-text b { font-size: 16px; }
+.pb-text span { font-size: 12.5px; color: var(--muted); }
+.pb-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--accent); color: var(--accent); background: var(--bg); border-radius: 12px; padding: 9px 14px; font-weight: 700; font-size: 14px; }
+.pb-btn svg { width: 20px; height: 20px; }
+@media (max-width: 360px) { .photobox { flex-wrap: wrap; } .pb-btn { width: 100%; justify-content: center; } }
+
+.privacy { display: flex; align-items: center; gap: 10px; background: var(--accent-soft); color: var(--accent); border-radius: 14px; padding: 14px 16px; font-size: 14px; font-weight: 600; }
+.privacy svg { width: 24px; height: 24px; flex: none; }
+.brand .btn.big { font-size: 18px; padding: 17px; border-radius: 16px; }
+.brand .btn.big svg { width: 22px; height: 22px; }
+.brand .box { background: var(--surface); border-color: var(--line); }
+
 @media (prefers-reduced-motion: no-preference) {
   .vb, .chip, .fchip, .btn { transition: background 0.15s, border-color 0.15s, color 0.15s; }
 }
