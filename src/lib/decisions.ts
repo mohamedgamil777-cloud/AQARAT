@@ -95,14 +95,16 @@ export function sortListings(list: Listing[], key: SortKey, me: Role): Listing[]
 
 // ── What kind of property / where, read from the broker's text ─────────────────────────────────
 const TYPES: [RegExp, string][] = [
-  [/مبنى|مبني|عمار[ةه]/, "مبنى"],
-  [/فيلا|ڤيلا/, "فيلا"],
-  [/مخزن|مستودع|هنجر|هناجر/, "مخزن"],
-  [/مصنع/, "مصنع"],
-  [/محل|معرض/, "محل"],
-  [/مكتب|إداري|اداري/, "مكتب"],
-  [/شق[ةه]|دوبلكس/, "شقة"],
-  [/أرض|ارض/, "أرض"],
+  [/مبنى|مبني|عمار[ةه]|\bbuilding\b/i, "مبنى"],
+  [/فيلا|ڤيلا|\bvilla\b/i, "فيلا"],
+  [/مخزن|مستودع|هنجر|هناجر|\bwarehouse\b|\bstore ?house\b/i, "مخزن"],
+  [/مصنع|\bfactory\b/i, "مصنع"],
+  [/محل|معرض|\bshop\b|\bshowroom\b|\bretail\b/i, "محل"],
+  [/دوبلكس|\bdou?ble?x\b/i, "دوبلكس"],
+  [/\bfull floor\b|دور كامل/i, "دور كامل"],
+  [/مكتب|إداري|اداري|\boffice\b|\badministrative\b/i, "مكتب"],
+  [/شق[ةه]|\bapartment\b|\bflat\b/i, "شقة"],
+  [/أرض |ارض |\bland\b|\bplot\b/i, "أرض"],
 ];
 
 export function typeOf(l: Listing): string {
@@ -123,9 +125,33 @@ const PLACES = [
   "العجوزة", "الهرم", "فيصل", "الشيخ زايد", "زايد", "أكتوبر", "اكتوبر", "حدائق الأهرام", "شبرا", "العباسية",
 ].sort((a, b) => b.length - a.length);
 
+// English spellings brokers use → the Arabic name shown on the card (most specific first).
+const PLACES_EN: [RegExp, string][] = [
+  [/zahraa?\s*(el[- ]?)?maadi/i, "زهراء المعادي"],
+  [/new\s*maadi|maadi\s*(el[- ]?)?gedida/i, "المعادي الجديدة"],
+  [/degla/i, "دجلة"],
+  [/(cornish|corniche|kornish).{0,25}maadi|maadi.{0,40}(cornish|corniche|kornish)/is, "كورنيش المعادي"],
+  [/sarayat|سرايات/i, "سرايات المعادي"],
+  [/sakr\s*(k|q)ura?ish/i, "صقر قريش"],
+  [/(el[- ]?)?maadi/i, "المعادي"],
+  [/new\s*cairo|tagamo?u?3?|fifth settlement/i, "التجمع"],
+  [/nasr\s*city/i, "مدينة نصر"],
+  [/heliopolis|masr\s*el\s*gedida/i, "مصر الجديدة"],
+  [/mokattam/i, "المقطم"],
+  [/helwan/i, "حلوان"],
+  [/zamalek/i, "الزمالك"],
+  [/dokki/i, "الدقي"],
+  [/mohandessin/i, "المهندسين"],
+  [/sheikh\s*zayed|zayed/i, "الشيخ زايد"],
+  [/october/i, "أكتوبر"],
+];
+
 export function locationOf(l: Listing): string | null {
-  const t = `${l.area ?? ""}\n${l.raw_text}`;
+  // "Close to the Corniche" / "قريب من المترو" describes what's nearby, not where the building is.
+  const t = `${l.area ?? ""}\n${l.raw_text}`
+    .replace(/(close to|near(by)?|next to|minutes? (from|to)|walking distance|قريب من|قريبة من|جنب|بجوار|دقايق من|دقائق من)[^\n]*/gi, "");
   for (const p of PLACES) if (t.includes(p)) return p === "اكتوبر" ? "أكتوبر" : p;
+  for (const [re, name] of PLACES_EN) if (re.test(t)) return name;
   return null;
 }
 
