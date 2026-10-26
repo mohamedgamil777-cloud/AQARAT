@@ -1,7 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+// Public by design (shipped to every browser), so they default here and hosting needs no env setup.
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://gtgpnzoumflvzvswcdpt.supabase.co";
+const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "sb_publishable_bQvvbfbeQEr0iaBV5CURtA_eU5seqSD";
 
 // One client for server and browser: the key is publishable and every call is a token-checked RPC.
 export const sb = createClient(url, key, { auth: { persistSession: false } });
