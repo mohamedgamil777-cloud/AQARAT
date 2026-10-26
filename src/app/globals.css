@@ -467,3 +467,7 @@ body:has(.brand:not(.soft)) { background: #ffffff; }
 .cnote b { color: var(--warn); }
 .cnote.fresh { outline: 2px solid var(--warn); }
 .tag-private { font-size: 11.5px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 1px 7px; }
+
+/* Mixed Arabic/English broker messages: each line takes its own direction ("500 meters" stays readable). */
+.rawmsg, .msg { unicode-bidi: plaintext; }
+.rawmsg { text-align: right; }

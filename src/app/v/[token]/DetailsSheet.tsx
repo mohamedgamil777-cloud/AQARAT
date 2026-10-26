@@ -44,6 +44,8 @@ export default function DetailsSheet(p: Props) {
   const [visitInput, setVisitInput] = useState("");
   const [menu, setMenu] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => { body.current?.scrollTo({ top: 0 }); }, [l.id]);
   const d = decision(l, me);
   const myVote = me === "owner" ? l.owner_vote : l.partner_vote;
   const loc = locationOf(l);
@@ -86,7 +88,7 @@ export default function DetailsSheet(p: Props) {
           <button className="x" onClick={p.onClose} aria-label="قفل">×</button>
         </header>
 
-        <div className="dbody">
+        <div className="dbody" ref={body}>
           {confirmDelete && (
             <div className="confirm" role="alertdialog">
               <b>تمسح العقار ده نهائي؟</b>
@@ -205,7 +207,7 @@ export default function DetailsSheet(p: Props) {
           {l.raw_text.trim() && (
             <section className="dsec">
               <h3>رسالة السمسار{ed("text") && <i className="edited">اتعدّلت</i>}</h3>
-              <p className="rawmsg">{l.raw_text}</p>
+              <p className="rawmsg" dir="auto">{l.raw_text}</p>
             </section>
           )}
 
@@ -230,7 +232,12 @@ function Thread({ list, me, names, empty, placeholder, onSend }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const end = useRef<HTMLDivElement>(null);
-  useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [list.length]);
+  // Only follow the conversation after a new message arrives — never on open (the sheet starts at the top).
+  const prevLen = useRef(list.length);
+  useEffect(() => {
+    if (list.length > prevLen.current) end.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    prevLen.current = list.length;
+  }, [list.length]);
   async function send(e: React.FormEvent) {
     e.preventDefault();
     const body = text.trim();
