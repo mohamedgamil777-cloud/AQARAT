@@ -137,8 +137,8 @@ begin
 
     -- Similar address plus at least one matching number.
     if length(coalesce(l.area, '')) >= 4 and length(coalesce(o.area, '')) >= 4
-       and similarity(l.area, o.area) >= 0.45
-       and (_near(l.size_m2, o.size_m2, 0.05) or (l.floors is not null and l.floors = o.floors) or _near(l.price, o.price, 0.05)) then
+       and similarity(l.area, o.area) >= 0.6
+       and (_near(l.size_m2, o.size_m2, 0.05) or _near(l.price, o.price, 0.05)) then
       r := array_append(r, 'area');
     end if;
 
