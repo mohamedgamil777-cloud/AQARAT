@@ -45,7 +45,7 @@ export default function EditListing({ l, token, checklist, onClose }: Props) {
     try {
       const { paths, hashes } = added.length ? await uploadPhotos(added.map((a) => a.file), setProgress) : { paths: [], hashes: [] };
       const p = parseListing(raw, checklist);
-      await rpc("broker_edit_listing", {
+      await rpc("broker_edit_listing_v2", {
         p_token: token, p_listing: l.id, p_raw: raw, p_area: p.area, p_price: priceNum, p_size: p.size,
         p_floors: p.floors, p_map: p.mapUrl, p_features: p.features,
         p_remove: l.photos.filter((x) => !keep.includes(x)), p_add: paths, p_hashes: hashes,

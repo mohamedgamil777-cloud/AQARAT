@@ -1,3 +1,4 @@
+-- APPLIED to Supabase project Aqarat on 2026-10-26 (in parts: broker_login_part1..part2d).
 -- Brokers log in with mobile + 4-digit PIN; each broker only ever gets his own token.
 -- Owner + partner keep seeing everything. Possible duplicate buildings are detected and flagged to them.
 
@@ -14,8 +15,6 @@ language sql immutable set search_path = public as $$
           translate(coalesce(p, ''), '٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹', '01234567890123456789'),
           '\D', '', 'g'), '^00', '') d) x
 $$;
-
-update brokers set phone = _norm_phone(phone) where phone <> _norm_phone(phone);
 
 alter table brokers
   add column if not exists pin_hash text,
@@ -94,7 +93,6 @@ create table if not exists listing_duplicates (
   check (a < b)
 );
 alter table listing_duplicates enable row level security;
-revoke all on listing_duplicates from anon, authenticated;
 
 -- Same spot on the map: coordinates rounded to ~10 m when the link carries them, else the link itself.
 create or replace function _map_key(u text) returns text
@@ -118,7 +116,8 @@ begin
   if l.id is null then return; end if;
   mk := _map_key(l.map_url);
 
-  delete from listing_duplicates where not dismissed and (a = l.id or b = l.id);
+  -- forget earlier (undismissed) matches for this building; empty reasons = not shown
+  update listing_duplicates set reasons = '{}' where not dismissed and (a = l.id or b = l.id);
 
   for o in select * from listings where hunt_id = l.hunt_id and id <> l.id loop
     r := '{}';
@@ -177,8 +176,8 @@ begin
   return jsonb_build_object('listing_id', lid);
 end $$;
 
--- Old phone-only submit stays for already-open browser tabs until the new site is live, but now also checks duplicates.
--- It is dropped by the follow-up "lockdown" migration.
+-- Old phone-only submit stays for already-open browser tabs until the new site is live; refuses PIN-protected brokers.
+-- Switched off by the follow-up "lockdown" migration.
 create or replace function submit_listing(p_invite text, p_name text, p_phone text, p_raw text, p_area text, p_price integer,
   p_size integer, p_floors integer, p_map text, p_visit timestamptz, p_features text[], p_photos text[])
 returns jsonb language plpgsql security definer set search_path = public as $$
@@ -204,49 +203,20 @@ begin
   return jsonb_build_object('broker_token', b.token, 'listing_id', lid);
 end $$;
 
--- Edit now also takes photo hashes and re-checks duplicates.
-drop function if exists broker_edit_listing(text, uuid, text, text, integer, integer, integer, text, text[], text[], text[]);
-create or replace function broker_edit_listing(p_token text, p_listing uuid, p_raw text, p_area text, p_price integer, p_size integer,
+-- Edit with photo fingerprints (new name, so the old function is never dropped; old tabs keep working).
+create or replace function broker_edit_listing_v2(p_token text, p_listing uuid, p_raw text, p_area text, p_price integer, p_size integer,
   p_floors integer, p_map text, p_features text[], p_remove text[], p_add text[], p_hashes text[] default null)
 returns void language plpgsql security definer set search_path = public as $$
-declare l listings; h hunts; next_sort int; i int; changed text[] := '{}'; removed int;
+declare l listings; i int;
 begin
   select li.* into l from listings li join brokers b on b.id = li.broker_id where li.id = p_listing and b.token = p_token;
   if l.id is null then raise exception 'NOT_ALLOWED'; end if;
-  if p_price is null or p_price <= 0 then raise exception 'PRICE_REQUIRED'; end if;
-  select * into h from hunts where id = l.hunt_id;
-
-  delete from photos where listing_id = l.id and path = any(coalesce(p_remove, '{}'));
-  get diagnostics removed = row_count;
-  if (select count(*) from photos where listing_id = l.id) + coalesce(array_length(p_add,1),0) > 40 then
-    raise exception 'TOO_MANY_PHOTOS';
-  end if;
-  select coalesce(max(sort),0) into next_sort from photos where listing_id = l.id;
+  perform broker_edit_listing(p_token, p_listing, p_raw, p_area, p_price, p_size, p_floors, p_map, p_features, p_remove, p_add);
   for i in 1..coalesce(array_length(p_add,1),0) loop
-    if p_add[i] like 'u/%' then
-      insert into photos(listing_id, path, sort, dhash)
-        values (l.id, p_add[i], next_sort + i, case when p_hashes[i] ~ '^[0-9a-f]{16}$' then p_hashes[i] end);
+    if p_hashes[i] ~ '^[0-9a-f]{16}$' then
+      update photos set dhash = p_hashes[i] where listing_id = l.id and path = p_add[i];
     end if;
   end loop;
-
-  if p_price is distinct from l.price then changed := array_append(changed, 'price'); end if;
-  if p_raw is not null and p_raw is distinct from l.raw_text then changed := array_append(changed, 'text'); end if;
-  if nullif(trim(p_area),'') is not null and trim(p_area) is distinct from l.area then changed := array_append(changed, 'area'); end if;
-  if p_size is not null and p_size is distinct from l.size_m2 then changed := array_append(changed, 'size'); end if;
-  if p_floors is not null and p_floors is distinct from l.floors then changed := array_append(changed, 'floors'); end if;
-  if removed > 0 or coalesce(array_length(p_add,1),0) > 0 then changed := array_append(changed, 'photos'); end if;
-
-  update listings set
-    raw_text = coalesce(p_raw, raw_text),
-    area = coalesce(nullif(trim(p_area),''), area),
-    price = p_price,
-    size_m2 = coalesce(p_size, size_m2),
-    floors = coalesce(p_floors, floors),
-    map_url = coalesce(nullif(trim(p_map),''), map_url),
-    features = (select coalesce(array_agg(distinct f), '{}') from unnest(features || coalesce((select array_agg(x) from unnest(p_features) x where x = any(h.features)), '{}')) f),
-    edited_at = case when cardinality(changed) > 0 then now() else edited_at end,
-    edited_fields = case when cardinality(changed) > 0 then changed else edited_fields end
-  where id = l.id;
   perform _detect_duplicates(l.id);
 end $$;
 
@@ -275,7 +245,7 @@ begin
       'partner_token', case when v.role = 'owner' then h.partner_token end),
     'listings', coalesce((select jsonb_agg(_listing_json(l, true) order by l.created_at desc) from listings l where l.hunt_id = h.id), '[]'::jsonb),
     'duplicates', coalesce((select jsonb_agg(jsonb_build_object('a', d.a, 'b', d.b, 'reasons', to_jsonb(d.reasons), 'created_at', d.created_at) order by d.created_at desc)
-       from listing_duplicates d where d.hunt_id = h.id and not d.dismissed), '[]'::jsonb),
+       from listing_duplicates d where d.hunt_id = h.id and not d.dismissed and cardinality(d.reasons) > 0), '[]'::jsonb),
     'brokers', case when v.role = 'owner' then coalesce((select jsonb_agg(jsonb_build_object(
         'id', b.id, 'name', b.name, 'phone', b.phone, 'has_pin', b.pin_hash is not null,
         'locked', coalesce(b.locked_until > now(), false), 'created_at', b.created_at,
@@ -307,17 +277,6 @@ begin
   if not found then raise exception 'NOT_ALLOWED'; end if;
   return jsonb_build_object('pin', pin);
 end $$;
-
--- ── Grants: only the public RPCs are callable from the browser ──────────────────────────────────
-revoke all on function _norm_phone(text), _map_key(text), _near(numeric, numeric, numeric), _detect_duplicates(uuid) from public, anon, authenticated;
-revoke all on function broker_login(text, text, text, text), broker_change_pin(text, text, text),
-  broker_submit(text, text, text, integer, integer, integer, text, timestamptz, text[], text[], text[]),
-  broker_edit_listing(text, uuid, text, text, integer, integer, integer, text, text[], text[], text[], text[]),
-  viewer_dismiss_duplicate(text, uuid, uuid), owner_reset_broker_pin(text, uuid) from public;
-grant execute on function broker_login(text, text, text, text), broker_change_pin(text, text, text),
-  broker_submit(text, text, text, integer, integer, integer, text, timestamptz, text[], text[], text[]),
-  broker_edit_listing(text, uuid, text, text, integer, integer, integer, text, text[], text[], text[], text[]),
-  viewer_dismiss_duplicate(text, uuid, uuid), owner_reset_broker_pin(text, uuid) to anon, authenticated;
 
 -- Check what's already there.
 select _detect_duplicates(id) from listings;
