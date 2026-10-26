@@ -9,6 +9,8 @@ import { ArrowLeft, Calendar, ImageIcon, ImagePlus, Logo, Money, Shield } from "
 import { detectInstall, registerSW, takeShared, type InstallState } from "@/lib/share";
 import { clearSession, getSession, setSession as saveSession, type BrokerSession } from "@/lib/session";
 import BrokerLogin from "./BrokerLogin";
+import BriefCard from "@/components/BriefCard";
+import { briefWarnings, type Brief } from "@/lib/brief";
 
 type InstallPrompt = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 
@@ -16,7 +18,7 @@ const MAX_PHOTOS = 40;
 
 type Pick = { file: File; url: string };
 
-export default function BrokerForm({ invite, ownerName, checklist }: { invite: string; ownerName: string; checklist: string[] }) {
+export default function BrokerForm({ invite, ownerName, checklist, brief }: { invite: string; ownerName: string; checklist: string[]; brief?: Brief }) {
   const [raw, setRaw] = useState("");
   const [pics, setPics] = useState<Pick[]>([]);
   const [price, setPrice] = useState("");
@@ -147,6 +149,7 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
     return (
       <main className="app brand">
         <Header title={`ابعت عقاراتك لـ${ownerName}`} sub="ادخل برقم موبايلك والرقم السري" />
+        <div className="pad" style={{ paddingBottom: 0 }}><BriefCard brief={brief} features={checklist} ownerName={ownerName} /></div>
         <BrokerLogin invite={invite} ownerName={ownerName} onIn={(s) => { setSession(s); setError(""); }} />
       </main>
     );
@@ -167,6 +170,9 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
     );
   }
 
+  const priceVal = parseInt(westernDigits(price).replace(/\D/g, ""), 10) || null;
+  const fitWarnings = briefWarnings(brief, parsed.size, priceVal);
+
   const chips = [
     parsed.floors && `${parsed.floors} أدوار`,
     parsed.size && `${money(parsed.size)} م²`,
@@ -182,6 +188,7 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
           <span>داخل باسم <b>{name}</b> <span className="ltr-inline">{session.phone}</span></span>
           <button type="button" className="link" onClick={logout}>خروج</button>
         </div>
+        <BriefCard brief={brief} features={checklist} ownerName={ownerName} />
         {needPin && <SetPin token={session.token} onDone={() => setNeedPin(false)} />}
         <a className="box link" href={`/m/${session.token}`} style={{ textAlign: "center" }}>
           شوف عقاراتي اللي بعتها وردود {ownerName} ←
@@ -197,6 +204,9 @@ export default function BrokerForm({ invite, ownerName, checklist }: { invite: s
         </label>
         {chips.length > 0 && (
           <div className="parsed">قرينا من رسالتك: {chips.map((c) => <span key={c}>{c}</span>)}</div>
+        )}
+        {fitWarnings.length > 0 && (
+          <div className="warn" role="status">{fitWarnings.map((w) => <span key={w}>⚠ {w}</span>)}<span style={{ fontWeight: 400 }}>تقدر تبعته عادي، بس غالباً مش هيناسب.</span></div>
         )}
 
         <label className="photobox">

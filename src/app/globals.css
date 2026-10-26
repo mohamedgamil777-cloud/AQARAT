@@ -315,3 +315,15 @@ body:has(.brand:not(.soft)) { background: #ffffff; }
 .brow .bm { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 13px; color: var(--muted); }
 .brow .bm b { color: var(--ink); font-size: 14px; }
 .pinout { font-size: 26px; font-weight: 800; letter-spacing: 0.3em; direction: ltr; text-align: center; color: var(--accent); }
+
+/* ── Brief: what the owner is looking for ── */
+.brief { background: var(--accent-soft); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.brief .brief-t, .brief summary { color: var(--accent); font-weight: 800; font-size: 15px; cursor: pointer; }
+.brief[open] summary { margin-bottom: 4px; }
+.brow2 { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; font-size: 14px; }
+.brow2 > span { color: var(--muted); flex: none; }
+.brow2 > b { text-align: left; }
+.brow2.col { flex-direction: column; align-items: stretch; gap: 6px; }
+.brief .chip { cursor: default; }
+.warn { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 10px 12px; font-weight: 600; font-size: 13.5px; display: flex; flex-direction: column; gap: 4px; }
+.brief .chip.on { background: var(--surface); }

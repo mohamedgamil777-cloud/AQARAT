@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { rpc } from "@/lib/sb";
 import type { BrokerRow, ViewerData } from "@/lib/types";
-import { errorText, timeAgo, waLink } from "@/lib/util";
+import { errorText, money, timeAgo, waLink, westernDigits } from "@/lib/util";
+import { DEFAULT_BRIEF } from "@/lib/brief";
 import { Whats } from "@/components/Icons";
 
 type Hunt = ViewerData["hunt"];
@@ -108,6 +109,14 @@ export default function SettingsSheet({ hunt, token, brokers, onClose, onSaved }
   const [partnerName, setPartnerName] = useState(hunt.partner_name);
   const [features, setFeatures] = useState<string[]>(hunt.features);
   const [newFeat, setNewFeat] = useState("");
+  const b0 = hunt.brief ?? DEFAULT_BRIEF;
+  const fmt = (n: number | null) => (n == null ? "" : money(n));
+  const [sizeMin, setSizeMin] = useState(fmt(b0.size_min));
+  const [sizeMax, setSizeMax] = useState(fmt(b0.size_max));
+  const [priceMin, setPriceMin] = useState(fmt(b0.price_min));
+  const [priceMax, setPriceMax] = useState(fmt(b0.price_max));
+  const [ground, setGround] = useState(b0.ground);
+  const num = (s: string) => { const n = parseInt(westernDigits(s).replace(/\D/g, ""), 10); return Number.isFinite(n) ? n : null; };
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -120,6 +129,7 @@ export default function SettingsSheet({ hunt, token, brokers, onClose, onSaved }
     setBusy(true); setMsg("");
     try {
       await rpc("owner_settings", { p_token: token, p_owner_name: ownerName, p_owner_phone: ownerPhone, p_partner_name: partnerName, p_features: features });
+      await rpc("owner_set_brief", { p_token: token, p_size_min: num(sizeMin), p_size_max: num(sizeMax), p_price_min: num(priceMin), p_price_max: num(priceMax), p_ground: ground });
       await onSaved();
       setMsg("اتحفظ ✓");
     } catch (e) { setMsg(errorText(e)); } finally { setBusy(false); }
@@ -147,6 +157,23 @@ export default function SettingsSheet({ hunt, token, brokers, onClose, onSaved }
               <input className="input ltr" id="s-phone" inputMode="tel" value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="01xxxxxxxxx" />
             </label>
             {ownerPhone && <a className="link" href={waLink(ownerPhone, "تجربة")} target="_blank" rel="noreferrer" style={{ fontSize: 13 }}>جرّب الرقم على واتساب</a>}
+          </div>
+
+          <div className="share">
+            <b>المطلوب (بيظهر للسماسرة)</b>
+            <span className="hint">السمسار بيشوف ده فوق الفورم، وبيطلعله تنبيه لو العقار برّه الحدود. سيب الخانة فاضية لو مفيش حد.</span>
+            <div className="row2">
+              <label className="field">المساحة من (م²)<input className="input" id="b-smin" inputMode="numeric" value={sizeMin} onChange={(e) => setSizeMin(e.target.value)} /></label>
+              <label className="field">لحد (م²)<input className="input" id="b-smax" inputMode="numeric" value={sizeMax} onChange={(e) => setSizeMax(e.target.value)} /></label>
+            </div>
+            <div className="row2">
+              <label className="field">الإيجار من (ج)<input className="input" id="b-pmin" inputMode="numeric" value={priceMin} onChange={(e) => setPriceMin(e.target.value)} /></label>
+              <label className="field">لحد (ج)<input className="input" id="b-pmax" inputMode="numeric" value={priceMax} onChange={(e) => setPriceMax(e.target.value)} /></label>
+            </div>
+            <label className="field" style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <input type="checkbox" id="b-ground" checked={ground} onChange={(e) => setGround(e.target.checked)} style={{ width: 20, height: 20 }} />
+              يفضّل دور أرضي
+            </label>
           </div>
 
           <div className="share">

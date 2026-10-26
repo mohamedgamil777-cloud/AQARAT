@@ -1,3 +1,5 @@
+import type { Brief } from "./brief";
+
 export type Vote = "like" | "nope" | null;
 export type Author = "owner" | "partner" | "broker";
 
@@ -40,6 +42,7 @@ export interface ViewerData {
     features: string[];
     invite: string;
     partner_token: string | null;
+    brief?: Brief;
   };
   listings: Listing[];
   /** Pairs of buildings that look like the same place (only shown to owner + partner). */
@@ -69,6 +72,6 @@ export interface BrokerRow {
 
 export interface BrokerData {
   broker: { name: string; phone: string; has_pin?: boolean };
-  hunt: { owner_name: string; owner_phone: string | null; invite: string; features: string[] };
+  hunt: { owner_name: string; owner_phone: string | null; invite: string; features: string[]; brief?: Brief };
   listings: Listing[];
 }
