@@ -27,6 +27,7 @@ export default function BrokerForm({ invite, ownerName, checklist, brief }: { in
   const [checking, setChecking] = useState(true);
   const [needPin, setNeedPin] = useState(false);
   const [visit, setVisit] = useState("");
+  const [brokerNote, setBrokerNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
@@ -114,11 +115,14 @@ export default function BrokerForm({ invite, ownerName, checklist, brief }: { in
     try {
       const { paths, hashes } = await uploadPhotos(pics.map((p) => p.file), setProgress);
 
-      await rpc("broker_submit", {
+      const res = await rpc<{ listing_id: string }>("broker_submit", {
         p_token: session.token, p_raw: raw, p_area: parsed.area,
         p_price: priceNum, p_size: parsed.size, p_floors: parsed.floors, p_map: parsed.mapUrl,
         p_visit: fromLocalInput(visit), p_features: parsed.features, p_photos: paths, p_hashes: hashes,
       });
+      // Optional comment → first message on this building's thread (owner + partner see it).
+      if (brokerNote.trim()) await rpc("broker_reply", { p_token: session.token, p_listing: res.listing_id, p_body: brokerNote.trim() }).catch(() => {});
+      setBrokerNote("");
       setDone(session.token);
       pics.forEach((p) => URL.revokeObjectURL(p.url));
       setPics([]); setRaw(""); setVisit(""); setPriceTouched(false);
@@ -247,6 +251,12 @@ export default function BrokerForm({ invite, ownerName, checklist, brief }: { in
             <input className="input" type="datetime-local" id="visit" value={visit} onChange={(e) => setVisit(e.target.value)} />
           </span>
           <em>ممكن تسيبه فاضي وتحدده بعد ما {ownerName} يوافق</em>
+        </label>
+
+        <label className="field">
+          <span>تعليق لـ{ownerName} (اختياري)</span>
+          <textarea className="input" id="broker-note" value={brokerNote} onChange={(e) => setBrokerNote(e.target.value)} maxLength={2000}
+            style={{ minHeight: 80 }} placeholder="أي حاجة عايز توضحها: التأمين، المالك، إمتى متاح، ملاحظات…" />
         </label>
 
         <div className="privacy"><Shield /><span>بياناتك للتواصل بخصوص العقار فقط</span></div>

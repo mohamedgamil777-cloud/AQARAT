@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { photoUrl } from "@/lib/sb";
 import type { Listing, ViewerData, Vote } from "@/lib/types";
 import { decision, isScheduled, locationOf, titleOf, typeOf, type DupLink, type Role } from "@/lib/decisions";
 import { fmtDate, fromLocalInput, mapLink, money, telLink, timeAgo, waLink } from "@/lib/util";
-import { Chat, Down, Phone, Pin, Up, Whats } from "@/components/Icons";
+import { Chat, Down, Phone, Pin, Send, Up, Whats } from "@/components/Icons";
+import type { Comment } from "@/lib/types";
 import { VoteBadge } from "./CompactCard";
 
 const FIELD_NAMES: Record<string, string> = {
@@ -31,6 +32,7 @@ type Props = {
   onAskOtherTime: () => void;
   onDelete: () => void;
   onChat: () => void;
+  onComment: (body: string, priv: boolean) => Promise<void>;
   onPhotos: (start: number) => void;
   onOpenOther: (id: string) => void;
   onNotDup: (otherId: string) => void;
@@ -51,6 +53,8 @@ export default function DetailsSheet(p: Props) {
   const score = hunt.features.filter((f) => l.features.includes(f)).length;
   const waitingFor = d === "waiting_me" ? "مستني رأيك" : d === "waiting_partner" ? `مستنيين رأي ${me === "owner" ? hunt.partner_name : hunt.owner_name}` : null;
   const [vcls, vtext] = VERDICT[d] ?? ["wait", waitingFor ?? ""];
+  const other = me === "owner" ? hunt.partner_name : hunt.owner_name;
+  const names = { owner: hunt.owner_name, partner: hunt.partner_name, broker: `السمسار ${l.broker.name}` };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") p.onClose(); };
@@ -118,7 +122,7 @@ export default function DetailsSheet(p: Props) {
             <a className="cbtn" href={telLink(l.broker.phone)}><Phone />اتصال</a>
             <a className="cbtn wa" href={waLink(l.broker.phone, waText)} target="_blank" rel="noreferrer"><Whats />واتساب</a>
             <a className="cbtn" href={map ?? undefined} aria-disabled={!map} target="_blank" rel="noreferrer"><Pin />الخريطة</a>
-            <button className="cbtn" onClick={p.onChat}><Chat />التعليقات{l.comments.length > 0 && ` (${l.comments.length})`}</button>
+            <button className="cbtn" onClick={() => document.getElementById("notes")?.scrollIntoView({ behavior: "smooth", block: "start" })}><Chat />التعليقات{l.comments.length > 0 && ` (${l.comments.length})`}</button>
           </div>
           <div className="sub">السمسار: {l.broker.name} · <span className="ltr-inline">{l.broker.phone}</span></div>
 
@@ -151,6 +155,13 @@ export default function DetailsSheet(p: Props) {
               <button className={`vb nope ${myVote === "nope" ? "on" : ""}`} aria-pressed={myVote === "nope"} onClick={() => p.onVote(myVote === "nope" ? null : "nope")}><Down />لأ</button>
             </div>
             {vtext && <div className={`verdict2 ${vcls}`}>{vtext}</div>}
+          </section>
+
+          <section className="dsec" id="notes">
+            <h3>بينك وبين {other} <span className="tag-private">🔒 خاص — السمسار مش بيشوفه</span></h3>
+            <Thread list={l.comments.filter((c) => c.private)} me={me} names={names}
+              empty={`مفيش ملاحظات لسه. اكتب لـ${other} رأيك أو سؤالك عن العقار ده.`}
+              placeholder={`اكتب ملاحظة لـ${other}…`} onSend={(b) => p.onComment(b, true)} />
           </section>
 
           <section className="dsec">
@@ -197,18 +208,50 @@ export default function DetailsSheet(p: Props) {
             </section>
           )}
 
-          <section className="dsec">
-            <h3>التعليقات {l.comments.length > 0 && <span className="score">{l.comments.length}</span>}</h3>
-            {l.comments.slice(-2).map((c) => (
-              <div key={c.id} className={`msg ${c.author === me ? "mine" : ""} ${c.private ? "private" : ""}`}>
-                <small>{c.author === "broker" ? `السمسار ${l.broker.name}` : c.author === "owner" ? hunt.owner_name : hunt.partner_name}{c.private ? " · خاصة" : ""} · {timeAgo(c.created_at)}</small>
-                {c.body}
-              </div>
-            ))}
-            <button className="btn sm ghost" onClick={p.onChat}><Chat />{l.comments.length ? "كل التعليقات واكتب رد" : "اسأل السمسار أو اكتب ملاحظة"}</button>
+          <section className="dsec" id="broker-thread">
+            <h3>مع السمسار {l.broker.name}</h3>
+            <Thread list={l.comments.filter((c) => !c.private)} me={me} names={names}
+              empty="مفيش رسايل مع السمسار لسه. السمسار بيشوف اللي بتكتبه هنا ويقدر يرد."
+              placeholder={`اكتب للسمسار ${l.broker.name}…`} onSend={(b) => p.onComment(b, false)} />
+            <button className="link" style={{ fontSize: 13, alignSelf: "flex-start" }} onClick={p.onChat}>أسئلة سريعة للسمسار وبلاغ واتساب ←</button>
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** A short conversation with its own input box — used for the private partner notes and for the broker thread. */
+function Thread({ list, me, names, empty, placeholder, onSend }: {
+  list: Comment[]; me: Role; names: Record<string, string>; empty: string; placeholder: string; onSend: (body: string) => Promise<void>;
+}) {
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const end = useRef<HTMLDivElement>(null);
+  useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [list.length]);
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    const body = text.trim();
+    if (!body) return;
+    setBusy(true); setErr("");
+    try { await onSend(body); setText(""); } catch { setErr("ماتبعتش. جرّب تاني."); } finally { setBusy(false); }
+  }
+  return (
+    <div className="thread2">
+      {list.length === 0 && <div className="msg sys">{empty}</div>}
+      {list.map((c) => (
+        <div key={c.id} className={`msg ${c.author === me ? "mine" : ""} ${c.private ? "private" : ""}`}>
+          <small>{names[c.author]} · {timeAgo(c.created_at)}</small>
+          {c.body}
+        </div>
+      ))}
+      <div ref={end} />
+      <form className="inline-form" onSubmit={send}>
+        <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder={placeholder} autoComplete="off" maxLength={2000} />
+        <button className="sendico" aria-label="إرسال" disabled={busy || !text.trim()}><Send /></button>
+      </form>
+      {err && <div className="err">{err}</div>}
     </div>
   );
 }

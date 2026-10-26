@@ -69,7 +69,7 @@ export default function Review({ token, initial }: { token: string; initial: Vie
   const visitsPending = shown.filter((l) => !isScheduled(l) && needsScheduling(l, me));
 
   const card = (l: Listing) => (
-    <CompactCard key={l.id} l={l} me={me} hunt={hunt} isDup={candidates.has(l.id)} unread={unread(l)} onOpen={() => setOpenId(l.id)} />
+    <CompactCard key={l.id} l={l} me={me} hunt={hunt} isDup={candidates.has(l.id)} unread={unread(l)} onOpen={() => { setOpenId(l.id); markSeen(l); }} />
   );
 
   return (
@@ -165,6 +165,11 @@ export default function Review({ token, initial }: { token: string; initial: Vie
             act("viewer_delete_listing", { p_listing: id });
           }}
           onChat={() => { setChatId(open.id); markSeen(open); }}
+          onComment={async (body, priv) => {
+            await rpc("viewer_comment", { p_token: token, p_listing: open.id, p_body: body, p_private: priv });
+            await reload();
+            markSeen({ ...open, comments: [...open.comments, { id: "x", author: me, body, private: priv, created_at: "" }] });
+          }}
           onPhotos={(start) => setPhotos({ list: open.photos, start })}
           onOpenOther={(id) => setOpenId(id)}
           onNotDup={(other) => {

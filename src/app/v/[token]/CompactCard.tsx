@@ -26,6 +26,10 @@ export default function CompactCard({ l, me, hunt, isDup, unread, onOpen }: Prop
   const loc = locationOf(l);
   const map = mapLink(l);
   const waText = `بخصوص ${typeOf(l)} ${loc ? `في ${loc} ` : ""}بإيجار ${money(l.price)} جنيه`;
+  // Latest private note from the other person (partner ↔ owner), shown right on the card.
+  const otherRole = me === "owner" ? "partner" : "owner";
+  const note = [...l.comments].reverse().find((c) => c.private && c.author === otherRole);
+  const otherName = me === "owner" ? hunt.partner_name : hunt.owner_name;
   const isNew = Date.now() - new Date(l.created_at).getTime() < 24 * 3600 * 1000 && d === "waiting_me";
 
   return (
@@ -58,6 +62,11 @@ export default function CompactCard({ l, me, hunt, isDup, unread, onOpen }: Prop
             {d === "split" && <span className="flag split">↔ رأيكم مختلف</span>}
             {isScheduled(l) && <span className="flag visit">📅 معاينة {fmtDate(l.suggested_visit)}</span>}
           </div>
+        )}
+        {note && (
+          <button className={`cnote ${unread > 0 ? "fresh" : ""}`} onClick={onOpen} title={note.body}>
+            <b>💬 {otherName}:</b> {note.body}
+          </button>
         )}
         <div className="cacts">
           <button className="cbtn primary" onClick={onOpen}>

@@ -457,3 +457,13 @@ body:has(.brand:not(.soft)) { background: #ffffff; }
 .tickets { align-items: center; }
 .ticket { white-space: nowrap; }
 .cvotes .flag { align-self: center; }
+
+/* Inline threads in the details sheet */
+.thread2 { display: flex; flex-direction: column; gap: 6px; background: var(--page); border-radius: 12px; padding: 10px; }
+.thread2 .msg { max-width: 92%; }
+.thread2 .inline-form { margin-top: 4px; }
+.cnote { appearance: none; border: 0; text-align: start; cursor: pointer; font-size: 12.5px; color: var(--ink); background: var(--warn-soft);
+  border-radius: 8px; padding: 4px 8px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.cnote b { color: var(--warn); }
+.cnote.fresh { outline: 2px solid var(--warn); }
+.tag-private { font-size: 11.5px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 6px; padding: 1px 7px; }
